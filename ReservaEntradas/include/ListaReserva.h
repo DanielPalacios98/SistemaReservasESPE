@@ -7,7 +7,12 @@ using namespace std;
 
 class ListaReserva {
 private:
-    NodoReserva* cabeza;  // Puntero al primer nodo de la lista
+    NodoReserva* cabeza;
+    int totalPalco;
+    int totalTribuna;
+    int totalGeneral;
+
+      // Puntero al primer nodo de la lista
 public:
     ListaReserva();       // Constructor
     ~ListaReserva();      // Destructor
@@ -21,6 +26,10 @@ public:
     int contarReserva();                                            // Cuenta el total de reservas
     void vaciar();                                                  // Elimina todas las reservas
     bool verificarFecha(const string& fechaActual);                 // Verifica estado según fecha
+    // CAMBIO: Se agregan estos métodos para persistencia
+    void guardarEnArchivo(const string& nombreArchivo) const;
+    void cargarDesdeArchivo(const string& nombreArchivo);
+
 };
 
 #endif // LISTARESERVA_H
