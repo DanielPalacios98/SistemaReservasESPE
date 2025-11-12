@@ -1,7 +1,13 @@
 #include "Reserva.h"
 #include <cctype>
 #include <algorithm>
+#include <iostream>
+
 using namespace std;
+
+Reserva::Reserva() {}
+Reserva::~Reserva() {}
+
 
 void Reserva::mostrarDetalle() {
     cout << "-----------------------------" << endl;

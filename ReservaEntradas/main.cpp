@@ -9,13 +9,13 @@ int main() {
     lista.cargarDesdeArchivo("reservas.txt"); // CAMBIO: Carga datos existentes al iniciar
     int opcion;
     do {
-        cout << "\n===== Sistema de Reservas de Boletos =====" << endl;
+        cout << "\n----- Sistema de Reservas de Boletos -----" << endl;
         cout << "1. Agregar reserva" << endl;
-        cout << "   Sólo se permite reservar un asiento por usuario (por cédula)." << endl;
-        cout << "   Cupos máximos: Palco: 10, Tribuna: 20, General: 60." << endl;
+        cout << "   Solo se permite reservar un asiento por usuario (por cedula)." << endl;
+        cout << "   Cupos maximos: Palco: 10, Tribuna: 20, General: 60." << endl;
         cout << "2. Mostrar reservas" << endl;
         cout << "0. Salir" << endl;
-        cout << "Opción: ";
+        cout << "Opcion: ";
         cin >> opcion;
         cin.ignore(); // Limpiar salto de línea
 
@@ -23,15 +23,15 @@ int main() {
             Reserva* r = new Reserva();
             string s;
             cout << "\n-- Registro de Nueva Reserva --" << endl;
-            cout << "Ingrese Nombres (sólo letras y espacios): ";
+            cout << "Ingrese Nombres (solo letras y espacios): ";
             getline(cin, s); r->setNombres(s);
-            cout << "Ingrese Cédula (exactamente 10 dígitos, sin espacios ni letras): ";
+            cout << "Ingrese Cedula (exactamente 10 digitos, sin espacios ni letras): ";
             getline(cin, s); r->setCedula(s);
-            cout << "Ingrese Teléfono (exactamente 10 dígitos, debe iniciar con 09): ";
+            cout << "Ingrese Telefono (exactamente 10 digitos, debe iniciar con 09): ";
             getline(cin, s); r->setTelefono(s);
             cout << "Ingrese Correo (debe tener '@' y al menos un punto '.'): ";
             getline(cin, s); r->setCorreo(s);
-            cout << "Ingrese Localidad (palco, tribuna, general; todo en minúsculas): ";
+            cout << "Ingrese Localidad (palco, tribuna, general; todo en minusculas): ";
             getline(cin, s); r->setLocalidad(s);
             r->setCantidadAsientos(1); // Se permite sólo uno por reserva
             lista.agregarReserva(r); // Backend hará validaciones y mensajes
@@ -39,7 +39,7 @@ int main() {
             cout << "\n-- Listado de Reservas --" << endl;
             lista.mostrarReservas();
         } else if (opcion != 0) {
-            cout << "Opción inválida. Intente nuevamente." << endl;
+            cout << "Opcion invalida. Intente nuevamente." << endl;
         }
 
     } while (opcion != 0);

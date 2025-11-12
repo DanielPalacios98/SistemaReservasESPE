@@ -19,13 +19,26 @@ ListaReserva::~ListaReserva() {
 }
 
 void ListaReserva::agregarReserva(Reserva* nuevaReserva) {
-    if (!nuevaReserva->validarCampos()) {
-        cout << "Los datos de la reserva no son validos." << endl;
-        return;
-    }
+   if (!nuevaReserva->validarCampos()) {
+    cout << "Los datos de la reserva no son validos. Detalle:" << endl;
+    if (!nuevaReserva->validarNombres())
+        cout << "- El nombre es invalido. Use solo letras y espacios." << endl;
+    if (!nuevaReserva->validarCedula())
+        cout << "- Cedula invalida. Debe tener 10 digitos numericos." << endl;
+    if (!nuevaReserva->validarTelefono())
+        cout << "- Telefono invalido. 10 digitos, empieza en 09." << endl;
+    if (!nuevaReserva->validarCorreo())
+        cout << "- Correo invalido. Falta '@' o punto '.' despues del '@'." << endl;
+    if (!nuevaReserva->validarLocalidad())
+        cout << "- Localidad invalida. Use palco, tribuna o general." << endl;
+    if (!nuevaReserva->validarCantidadAsientos())
+        cout << "- Solo se permite reservar 1 asiento." << endl;
+    return;
+}
+
     // Evita duplicados por cédula
     if (buscarPorCedula(nuevaReserva->getCedula()) != nullptr) {
-        cout << "Ya existe una reserva con esa cedula. No puede reservar más de un asiento." << endl;
+        cout << "Ya existe una reserva con esa cedula. No puede reservar mas de un asiento." << endl;
         return;
     }
     // Control de cupos por localidad
