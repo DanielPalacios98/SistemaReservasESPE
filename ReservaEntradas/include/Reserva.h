@@ -2,7 +2,6 @@
 #include <string>
 using namespace std;
 
-// Clase reserva individual
 class Reserva {
 private:
     int idReserva;
@@ -13,8 +12,7 @@ private:
     string localidad;
     int numAsientos;
 public:
-    // Constructor
-    Reserva(int idReserva, const string& nombres, const string& cedula,
+    Reserva(int idReserva, const string& nombres, const string& cedula, 
             const string& telefono, const string& correo,
             const string& localidad, int numAsientos);
 

@@ -2,9 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 using namespace std;
 
-// Constructor
 ListaReserva::ListaReserva() : head(nullptr), autoincID(1001) {}
 ListaReserva::~ListaReserva() {
     if (!head) return;
@@ -18,7 +18,6 @@ ListaReserva::~ListaReserva() {
     head = nullptr;
 }
 
-// NUEVO: cuenta los asientos ocupados de una localidad
 int ListaReserva::asientosOcupadosLocalidad(const string& localidad) {
     int total = 0;
     if (!head) return 0;
@@ -31,11 +30,9 @@ int ListaReserva::asientosOcupadosLocalidad(const string& localidad) {
     return total;
 }
 
-// Agregar reserva valida cupo por localidad y por usuario
 bool ListaReserva::agregarReserva(const string& nombres, const string& cedula,
                                   const string& telefono, const string& correo,
                                   const string& localidad, int& asientos) {
-    // Validacion cupo total por localidad
     int maximo = 0;
     if (localidad == "palco") maximo = MAX_PALCO;
     else if (localidad == "tribuna") maximo = MAX_TRIBUNA;
@@ -45,8 +42,6 @@ bool ListaReserva::agregarReserva(const string& nombres, const string& cedula,
         cout << "No hay suficientes asientos disponibles en " << localidad << ". Cupo completo o insuficiente." << endl;
         return false;
     }
-
-    // Validar maximo 5 asientos por usuario
     int totalAsientos = 0;
     NodoReserva* temp = head;
     do {
@@ -58,8 +53,6 @@ bool ListaReserva::agregarReserva(const string& nombres, const string& cedula,
         cout << "Este usuario ya ha reservado el maximo permitido (5 asientos)." << endl;
         return false;
     }
-
-    // Registrar la reserva
     Reserva* nueva = new Reserva(autoincID++, nombres, cedula, telefono, correo, localidad, asientos);
     NodoReserva* nodo = new NodoReserva(nueva);
     if (!head) {
@@ -158,6 +151,52 @@ int ListaReserva::contarAsientosPorCedula(const string& cedula) {
         temp = temp->next;
     } while (temp != head);
     return total;
+}
+
+vector<Reserva*> ListaReserva::obtenerReservasComoVector() {
+    vector<Reserva*> vec;
+    if (!head) return vec;
+    NodoReserva* temp = head;
+    do {
+        vec.push_back(temp->reserva);
+        temp = temp->next;
+    } while (temp != head);
+    return vec;
+}
+
+// QuickSort y particion para ordenar reservas
+int particion(vector<Reserva*>& arr, int low, int high, bool porNombre) {
+    string piv = porNombre ? arr[high]->getNombres() : arr[high]->getCedula();
+    int i = low - 1;
+    for (int j = low; j < high; ++j) {
+        string actual = porNombre ? arr[j]->getNombres() : arr[j]->getCedula();
+        if (actual < piv) {
+            ++i;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i + 1], arr[high]);
+    return i + 1;
+}
+
+void quickSort(vector<Reserva*>& arr, int low, int high, bool porNombre) {
+    if (low < high) {
+        int pi = particion(arr, low, high, porNombre);
+        quickSort(arr, low, pi - 1, porNombre);
+        quickSort(arr, pi + 1, high, porNombre);
+    }
+}
+
+void ListaReserva::mostrarReservasOrdenadas(bool porNombre) {
+    vector<Reserva*> arr = obtenerReservasComoVector();
+    if (arr.empty()) {
+        cout << "No hay reservas." << endl;
+        return;
+    }
+    quickSort(arr, 0, arr.size() - 1, porNombre);
+    cout << "=== Reservas ordenadas por " << (porNombre ? "nombre" : "cedula") << " ===" << endl;
+    for (auto r : arr)
+        r->mostrarDetalle();
 }
 
 void ListaReserva::guardarEnArchivo(const string& filename) {

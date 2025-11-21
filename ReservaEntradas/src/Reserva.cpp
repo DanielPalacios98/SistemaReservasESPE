@@ -4,7 +4,7 @@
 #include <algorithm>
 using namespace std;
 
-Reserva::Reserva(int idReserva, const string& nombres, const string& cedula,
+Reserva::Reserva(int idReserva, const string& nombres, const string& cedula, 
     const string& telefono, const string& correo,
     const string& localidad, int numAsientos)
     : idReserva(idReserva), nombres(nombres), cedula(cedula),

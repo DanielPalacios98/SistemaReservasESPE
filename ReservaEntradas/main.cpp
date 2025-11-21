@@ -46,8 +46,10 @@ int main() {
         cout << "1. Registrar nueva reserva" << endl;
         cout << "2. Mostrar reservas" << endl;
         cout << "3. Eliminar reserva por ID" << endl;
+        cout << "4. Mostrar reservas ordenadas por nombre" << endl;
+        cout << "5. Mostrar reservas ordenadas por cedula" << endl;
         cout << "0. Salir" << endl;
-        op = pedirOpcionMenu(0, 3);
+        op = pedirOpcionMenu(0, 5);
 
         if (op == 1) {
             string nombres, cedula, telefono, correo, localidad;
@@ -66,7 +68,7 @@ int main() {
                 if (!Reserva::validarCedula(cedula))
                     cout << " Error: Cedula ecuatoriana invalida. Deben ser 10 digitos correctos." << endl;
             } while (!Reserva::validarCedula(cedula));
-
+            
             do {
                 cout << "Telefono (10 digitos, inicia con 09): ";
                 getline(cin, telefono);
@@ -115,6 +117,14 @@ int main() {
             } else {
                 cout << "No se encontro esa reserva." << endl;
             }
+        }
+
+        if (op == 4) {
+            reservas.mostrarReservasOrdenadas(true); // Ordenar por nombre
+        }
+
+        if (op == 5) {
+            reservas.mostrarReservasOrdenadas(false); // Ordenar por cedula
         }
     }
     cout << "Guardando y saliendo..." << endl;
