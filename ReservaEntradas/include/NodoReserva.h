@@ -1,14 +1,12 @@
-#ifndef NODORESERVA_H
-#define NODORESERVA_H
+#pragma once
 #include "Reserva.h"
 
+// Nodo para lista circular
 class NodoReserva {
 public:
-    Reserva* reserva;           // Puntero a la Reserva que almacena este nodo
-    NodoReserva* siguiente;     // Puntero al siguiente nodo de la lista
+    Reserva* reserva;
+    NodoReserva* next;
 
-    NodoReserva(Reserva* r);    // Constructor adecuado para listas
+    NodoReserva(Reserva* reserva);
     ~NodoReserva();
 };
-
-#endif // NODORESERVA_H

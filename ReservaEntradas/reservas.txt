@@ -1,11 +1,2 @@
-Andrea Ortiz,9123456789,0918765432,andrea@mail.com,palco,1
-Pablo palacios,1719099648,0979283932,d@gmail.com,tribuna,1
-Juan Perez,0123456789,0912345678,juan@mail.com,Palco,1
-Maria Gomez,1123456789,0922345678,maria@mail.com,palco,1
-Pedro Ruiz,2123456789,0932345678,pedro@mail.com,palco,1
-Ana Castro,3123456789,0942345678,ana@mail.com,palco,1
-Jose Cabrera,4123456789,0952345678,ana@mail.com,palco,1
-Luisa Torres,5123456789,0962345678,luisa@mail.com,palco,1
-Mario Delgado,6123456789,0972345678,mario@mail.com,palco,1
-Carolina Rivera,7123456789,0982345678,carolina@mail.com,palco,1
-Eduardo Sanchez,8123456789,0992345678,eduardo@mail.com,palco,1
+1001,Daniel Palacios,1719099648,0979283932,danie@gmail.com,palco,5
+1002,Samuel Davalos,1718900655,0978541212,daniel@mail.com,palco,5

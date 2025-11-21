@@ -1,33 +1,31 @@
 # depslib dependency file v1.0
-1762923932 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\main.cpp
+1763568748 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\main.cpp
 	"ListaReserva.h"
-	"Reserva.h"
 	<iostream>
-	<string>
+	<limits>
 
-1762921728 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\listareserva.h
+1763568718 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\listareserva.h
 	"NodoReserva.h"
 	<string>
 
-1762920459 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\nodoreserva.h
+1763568690 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\nodoreserva.h
 	"Reserva.h"
 
-1762921905 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\reserva.h
+1763568656 c:\users\daniel\documents\sistemareservasespe\reservaentradas\include\reserva.h
 	<string>
 
-1762924663 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\listareserva.cpp
+1763568732 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\listareserva.cpp
 	"ListaReserva.h"
 	<iostream>
-	<algorithm>
 	<fstream>
 	<sstream>
 
-1762920453 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\nodoreserva.cpp
+1763568704 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\nodoreserva.cpp
 	"NodoReserva.h"
 
-1762923633 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\reserva.cpp
+1763568676 source:c:\users\daniel\documents\sistemareservasespe\reservaentradas\src\reserva.cpp
 	"Reserva.h"
-	<cctype>
-	<algorithm>
 	<iostream>
+	<regex>
+	<algorithm>
 

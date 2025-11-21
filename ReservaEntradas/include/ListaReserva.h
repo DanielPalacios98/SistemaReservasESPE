@@ -1,35 +1,35 @@
-#ifndef LISTARESERVA_H
-#define LISTARESERVA_H
-
+#pragma once
 #include "NodoReserva.h"
 #include <string>
 using namespace std;
 
+// Manejo de lista circular con control de cupos y CRUD
 class ListaReserva {
 private:
-    NodoReserva* cabeza;
-    int totalPalco;
-    int totalTribuna;
-    int totalGeneral;
+    NodoReserva* head;
+    int autoincID;
 
-      // Puntero al primer nodo de la lista
+    // Cupos maximos por localidad (constantes)
+    static const int MAX_PALCO = 10;
+    static const int MAX_TRIBUNA = 20;
+    static const int MAX_GENERAL = 60;
+
 public:
-    ListaReserva();       // Constructor
-    ~ListaReserva();      // Destructor
+    ListaReserva();
+    ~ListaReserva();
 
-    // Operaciones principales basadas en tu UML:
-    void agregarReserva(Reserva* nuevaReserva);                     // Inserta una reserva en la lista
-    void mostrarReservas();                                         // Muestra todas las reservas
-    Reserva* buscarPorCedula(const string& cedula);                 // Busca reserva por cédula
-    bool eliminarReserva(const string& cedula);                     // Elimina una reserva por cédula
-    bool actualizarReserva(const string& cedula, Reserva* reserva); // Actualiza una reserva existente
-    int contarReserva();                                            // Cuenta el total de reservas
-    void vaciar();                                                  // Elimina todas las reservas
-    bool verificarFecha(const string& fechaActual);                 // Verifica estado según fecha
-    // CAMBIO: Se agregan estos métodos para persistencia
-    void guardarEnArchivo(const string& nombreArchivo) const;
-    void cargarDesdeArchivo(const string& nombreArchivo);
+    bool agregarReserva(const string&, const string&, const string&,
+                        const string&, const string&, int&);
+    bool buscarPorID(int id);
+    NodoReserva* obtenerPorID(int id);
+    void mostrarReservas();
+    bool eliminarPorID(int id);
+    int contarAsientosPorID(int id);
+    int contarAsientosPorCedula(const string& cedula);
 
+    // NUEVO: contar asientos ocupados por localidad
+    int asientosOcupadosLocalidad(const string& localidad);
+
+    void guardarEnArchivo(const string& filename);
+    void cargarDesdeArchivo(const string& filename);
 };
-
-#endif // LISTARESERVA_H

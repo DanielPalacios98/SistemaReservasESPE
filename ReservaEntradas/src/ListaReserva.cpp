@@ -1,155 +1,211 @@
 #include "ListaReserva.h"
 #include <iostream>
-#include <algorithm>
-#include <fstream>    // CAMBIO: Necesario para archivos
-#include <sstream>    // CAMBIO: Necesario para separar datos
+#include <fstream>
+#include <sstream>
 using namespace std;
 
-// Inicializa contadores y la cabeza de la lista
-ListaReserva::ListaReserva() {
-    cabeza = nullptr;
-    totalPalco = 0;
-    totalTribuna = 0;
-    totalGeneral = 0;
-}
-
-// Libera memoria y reinicia contadores
+// Constructor
+ListaReserva::ListaReserva() : head(nullptr), autoincID(1001) {}
 ListaReserva::~ListaReserva() {
-    vaciar();
+    if (!head) return;
+    NodoReserva* temp = head->next;
+    while (temp != head) {
+        NodoReserva* to_delete = temp;
+        temp = temp->next;
+        delete to_delete;
+    }
+    delete head;
+    head = nullptr;
 }
 
-void ListaReserva::agregarReserva(Reserva* nuevaReserva) {
-   if (!nuevaReserva->validarCampos()) {
-    cout << "Los datos de la reserva no son validos. Detalle:" << endl;
-    if (!nuevaReserva->validarNombres())
-        cout << "- El nombre es invalido. Use solo letras y espacios." << endl;
-    if (!nuevaReserva->validarCedula())
-        cout << "- Cedula invalida. Debe tener 10 digitos numericos." << endl;
-    if (!nuevaReserva->validarTelefono())
-        cout << "- Telefono invalido. 10 digitos, empieza en 09." << endl;
-    if (!nuevaReserva->validarCorreo())
-        cout << "- Correo invalido. Falta '@' o punto '.' despues del '@'." << endl;
-    if (!nuevaReserva->validarLocalidad())
-        cout << "- Localidad invalida. Use palco, tribuna o general." << endl;
-    if (!nuevaReserva->validarCantidadAsientos())
-        cout << "- Solo se permite reservar 1 asiento." << endl;
-    return;
+// NUEVO: cuenta los asientos ocupados de una localidad
+int ListaReserva::asientosOcupadosLocalidad(const string& localidad) {
+    int total = 0;
+    if (!head) return 0;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getLocalidad() == localidad)
+            total += temp->reserva->getNumAsientos();
+        temp = temp->next;
+    } while (temp != head);
+    return total;
 }
 
-    // Evita duplicados por cédula
-    if (buscarPorCedula(nuevaReserva->getCedula()) != nullptr) {
-        cout << "Ya existe una reserva con esa cedula. No puede reservar mas de un asiento." << endl;
-        return;
+// Agregar reserva valida cupo por localidad y por usuario
+bool ListaReserva::agregarReserva(const string& nombres, const string& cedula,
+                                  const string& telefono, const string& correo,
+                                  const string& localidad, int& asientos) {
+    // Validacion cupo total por localidad
+    int maximo = 0;
+    if (localidad == "palco") maximo = MAX_PALCO;
+    else if (localidad == "tribuna") maximo = MAX_TRIBUNA;
+    else if (localidad == "general") maximo = MAX_GENERAL;
+    int ocupados = asientosOcupadosLocalidad(localidad);
+    if (ocupados + asientos > maximo) {
+        cout << "No hay suficientes asientos disponibles en " << localidad << ". Cupo completo o insuficiente." << endl;
+        return false;
     }
-    // Control de cupos por localidad
-    string loc = nuevaReserva->getLocalidad();
-    std::transform(loc.begin(), loc.end(), loc.begin(), ::tolower);
-    if (loc == "palco" && totalPalco >= 10) {
-        cout << "Cupo de palco agotado." << endl;
-        return;
-    } else if (loc == "tribuna" && totalTribuna >= 20) {
-        cout << "Cupo de tribuna agotado." << endl;
-        return;
-    } else if (loc == "general" && totalGeneral >= 60) {
-        cout << "Cupo de general agotado." << endl;
-        return;
-    }
-    // Inserta al inicio
-    NodoReserva* nuevoNodo = new NodoReserva(nuevaReserva);
-    nuevoNodo->siguiente = cabeza;
-    cabeza = nuevoNodo;
-    // Actualiza el contador correspondiente
-    if (loc == "palco") ++totalPalco;
-    else if (loc == "tribuna") ++totalTribuna;
-    else if (loc == "general") ++totalGeneral;
-    cout << "Reserva agregada con éxito." << endl;
-}
 
-Reserva* ListaReserva::buscarPorCedula(const string& cedula) {
-    NodoReserva* aux = cabeza;
-    while (aux != nullptr) {
-        if (aux->reserva->getCedula() == cedula) {
-            return aux->reserva;
-        }
-        aux = aux->siguiente;
+    // Validar maximo 5 asientos por usuario
+    int totalAsientos = 0;
+    NodoReserva* temp = head;
+    do {
+        if (temp && temp->reserva->getCedula() == cedula)
+            totalAsientos += temp->reserva->getNumAsientos();
+        if (temp) temp = temp->next;
+    } while (temp && temp != head);
+    if (totalAsientos + asientos > 5) {
+        cout << "Este usuario ya ha reservado el maximo permitido (5 asientos)." << endl;
+        return false;
     }
-    return nullptr;
+
+    // Registrar la reserva
+    Reserva* nueva = new Reserva(autoincID++, nombres, cedula, telefono, correo, localidad, asientos);
+    NodoReserva* nodo = new NodoReserva(nueva);
+    if (!head) {
+        head = nodo;
+        head->next = head;
+    } else {
+        NodoReserva* tail = head;
+        while (tail->next != head)
+            tail = tail->next;
+        tail->next = nodo;
+        nodo->next = head;
+    }
+    cout << "Reserva almacenada con ID: " << nueva->getIdReserva() << endl;
+    return true;
 }
 
 void ListaReserva::mostrarReservas() {
-    NodoReserva* aux = cabeza;
-    while (aux != nullptr) {
-        aux->reserva->mostrarDetalle();
-        aux = aux->siguiente;
+    if (!head) {
+        cout << "No hay reservas." << endl;
+        return;
     }
+    NodoReserva* temp = head;
+    do {
+        temp->reserva->mostrarDetalle();
+        temp = temp->next;
+    } while (temp != head);
 }
 
-void ListaReserva::vaciar() {
-    NodoReserva* aux;
-    while (cabeza != nullptr) {
-        aux = cabeza;
-        cabeza = cabeza->siguiente;
-        delete aux->reserva;
-        delete aux;
-    }
-    // CAMBIO: reinicio de contadores tras vaciar lista
-    totalPalco = 0;
-    totalTribuna = 0;
-    totalGeneral = 0;
+bool ListaReserva::buscarPorID(int id) {
+    if (!head) return false;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getIdReserva() == id) return true;
+        temp = temp->next;
+    } while (temp != head);
+    return false;
 }
 
-// CAMBIO: Método para guardar reservas en archivo txt
-void ListaReserva::guardarEnArchivo(const string& nombreArchivo) const {
-    std::ofstream archivo(nombreArchivo);
-    NodoReserva* aux = cabeza;
-    while (aux != nullptr) {
-        archivo << aux->reserva->getNombres() << ","
-                << aux->reserva->getCedula() << ","
-                << aux->reserva->getTelefono() << ","
-                << aux->reserva->getCorreo() << ","
-                << aux->reserva->getLocalidad() << ","
-                << aux->reserva->getCantidadAsientos() << std::endl;
-        aux = aux->siguiente;
-    }
-    archivo.close();
+NodoReserva* ListaReserva::obtenerPorID(int id) {
+    if (!head) return nullptr;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getIdReserva() == id) return temp;
+        temp = temp->next;
+    } while (temp != head);
+    return nullptr;
 }
 
-// CAMBIO: Método para cargar reservas desde archivo txt y actualizar contadores de cupo
-void ListaReserva::cargarDesdeArchivo(const string& nombreArchivo) {
-    std::ifstream archivo(nombreArchivo);
-    std::string linea;
-    while (std::getline(archivo, linea)) {
-        std::stringstream ss(linea);
-        std::string nombres, cedula, telefono, correo, localidad, asientosStr;
-        std::getline(ss, nombres, ',');
-        std::getline(ss, cedula, ',');
-        std::getline(ss, telefono, ',');
-        std::getline(ss, correo, ',');
-        std::getline(ss, localidad, ',');
-        std::getline(ss, asientosStr, ',');
-        int asientos = std::stoi(asientosStr);
-        Reserva* r = new Reserva();
-        r->setNombres(nombres);
-        r->setCedula(cedula);
-        r->setTelefono(telefono);
-        r->setCorreo(correo);
-        r->setLocalidad(localidad);
-        r->setCantidadAsientos(asientos);
-        // Validación y control de duplicados
-        if (r->validarCampos() && buscarPorCedula(cedula) == nullptr) {
-            NodoReserva* nuevoNodo = new NodoReserva(r);
-            nuevoNodo->siguiente = cabeza;
-            cabeza = nuevoNodo;
-            // CAMBIO: suma al contador adecuado
-            string loc = localidad;
-            std::transform(loc.begin(), loc.end(), loc.begin(), ::tolower);
-            if (loc == "palco") ++totalPalco;
-            else if (loc == "tribuna") ++totalTribuna;
-            else if (loc == "general") ++totalGeneral;
+bool ListaReserva::eliminarPorID(int id) {
+    if (!head) return false;
+    NodoReserva* prev = head, *curr = head;
+    do {
+        if (curr->reserva->getIdReserva() == id) {
+            if (curr == head && curr->next == head) {
+                delete curr;
+                head = nullptr;
+                return true;
+            }
+            if (curr == head) {
+                NodoReserva* tail = head;
+                while (tail->next != head) tail = tail->next;
+                head = head->next;
+                tail->next = head;
+                delete curr;
+                return true;
+            }
+            prev->next = curr->next;
+            delete curr;
+            return true;
+        }
+        prev = curr;
+        curr = curr->next;
+    } while (curr != head);
+    return false;
+}
+
+int ListaReserva::contarAsientosPorID(int id) {
+    int total = 0;
+    if (!head) return 0;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getIdReserva() == id)
+            total += temp->reserva->getNumAsientos();
+        temp = temp->next;
+    } while (temp != head);
+    return total;
+}
+
+int ListaReserva::contarAsientosPorCedula(const string& cedula) {
+    int total = 0;
+    if (!head) return 0;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getCedula() == cedula)
+            total += temp->reserva->getNumAsientos();
+        temp = temp->next;
+    } while (temp != head);
+    return total;
+}
+
+void ListaReserva::guardarEnArchivo(const string& filename) {
+    ofstream out(filename);
+    if (!head) return;
+    NodoReserva* temp = head;
+    do {
+        out << temp->reserva->getIdReserva() << ','
+            << temp->reserva->getNombres() << ','
+            << temp->reserva->getCedula() << ','
+            << temp->reserva->getTelefono() << ','
+            << temp->reserva->getCorreo() << ','
+            << temp->reserva->getLocalidad() << ','
+            << temp->reserva->getNumAsientos() << '\n';
+        temp = temp->next;
+    } while (temp != head);
+    out.close();
+}
+
+void ListaReserva::cargarDesdeArchivo(const string& filename) {
+    ifstream in(filename);
+    if (!in.is_open()) return;
+    string line;
+    while (getline(in, line)) {
+        stringstream ss(line);
+        string id, nombre, ced, tel, mail, loc, numAs;
+        getline(ss, id, ',');
+        getline(ss, nombre, ',');
+        getline(ss, ced, ',');
+        getline(ss, tel, ',');
+        getline(ss, mail, ',');
+        getline(ss, loc, ',');
+        getline(ss, numAs, '\n');
+        int idn = stoi(id);
+        int nAs = stoi(numAs);
+        if (idn >= autoincID) autoincID = idn + 1;
+        Reserva* nueva = new Reserva(idn, nombre, ced, tel, mail, loc, nAs);
+        NodoReserva* nodo = new NodoReserva(nueva);
+        if (!head) {
+            head = nodo;
+            head->next = head;
         } else {
-            delete r;
+            NodoReserva* tail = head;
+            while (tail->next != head)
+                tail = tail->next;
+            tail->next = nodo;
+            nodo->next = head;
         }
     }
-    archivo.close();
+    in.close();
 }
-
