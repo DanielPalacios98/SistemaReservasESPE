@@ -1,0 +1,38 @@
+"Desarrollar un sistema integrado en drones que utilice sensores de profundidad (LiDAR o infrarrojos) y fotogrametría, similar a la tecnología TrueDepth/LiDAR de los iPhone Pro, pero a gran escala. El objetivo es escanear topografía y terrenos extensos para capturar nubes de puntos y texturas. Estos datos serían procesados por una Inteligencia Artificial para 'segmentar' (clasificar objetos como árboles, edificios, agua) y renderizar entornos 3D de alta fidelidad, similar a la tecnología que usa Microsoft Flight Simulator."
+
+El nombre técnico de esto es: Mapeo Aéreo con LiDAR y Fotogrametría asistido por IA.
+
+La solución para drones (LiDAR Industrial): Para "grandes espacios", los drones usan sensores LiDAR de alta potencia que disparan láseres a cientos de metros para medir la profundidad.
+
+La IA de Microsoft Flight Simulator: Ellos usan una empresa llamada Blackshark.ai. Toman imágenes 2D de satélite y una IA "imagina" y extruye los edificios en 3D basándose en la huella del edificio.
+
+Para implementar esto, necesitas tres pilares: Hardware, Software de Vuelo y la IA de Procesamiento.
+
+No puedes usar una cámara estándar si quieres profundidad real (aunque la IA ayuda).
+
+Dron de carga media/pesada: Necesita soportar el peso de sensores adicionales y tener buena batería (ej. DJI Matrice o drones de ala fija para cubrir más terreno).
+
+Sensor LiDAR Aerotransportado: A diferencia del iPhone, necesitas un sensor como el Velodyne o Livox. Estos penetran la vegetación (pueden ver el suelo debajo de los árboles).
+
+Cámara RGB de alta resolución: Para capturar el color y la textura que se "pegará" sobre el modelo 3D.
+
+Módulo RTK (Real Time Kinematic): GPS de ultra precisión (centímetros) para que el mapa no salga deformado.
+
+B. Software de Vuelo (La Captura)
+Planificación de Misión: Software que automatice el vuelo en patrones de cuadrícula (como DJI Pilot o Mission Planner).
+
+NeRFs (Neural Radiance Fields): Es la tecnología de moda. Una IA toma fotos 2D y aprende a predecir cómo se ve el objeto desde cualquier ángulo, creando un 3D casi perfecto.
+
+Gaussian Splatting: Una técnica más nueva y rápida que NeRF para renderizar escenas complejas en tiempo real.
+
+Segmentación Semántica: Una IA que analiza la nube de puntos y dice: "Esto es un árbol, esto es un coche, esto es un río". Esto permite, por ejemplo, borrar todos los coches de un mapa automáticamente.
+
+Procesamiento IA:
+
+La IA limpia el "ruido" (pájaros, reflejos).
+
+La IA clasifica el terreno (tierra vs. vegetación).
+
+Meshing y Texturizado: Se crea la malla 3D sólida y se le aplica el color.
+
+Renderizado: El resultado es un modelo 3D navegable compatible con motores como Unreal Engine 5 o Unity.

@@ -33,5 +33,5 @@ public:
     void mostrarReservasOrdenadas(bool porNombre);
 
     void guardarEnArchivo(const string& filename);
-    void cargarDesdeArchivo(const string& filename);
+    void cargarDesdeArchivo(const string& filename);// crear un DLL invoca una libreria dinamica con punteros , hacer un menu ordenamiento 1 sort , shell, quishrot , radix , ordenamiento xyz elija la opcion / crear persistencia de datos para todas las nuevas listas /
 };
