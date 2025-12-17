@@ -36,6 +36,10 @@ static void quickSort(vector<Reserva*>& arr, int low, int high, bool porNombre) 
 ListaReserva::ListaReserva()
     : head(nullptr), autoincID(1001) {}
 
+ListaReserva::~ListaReserva() {
+    clear();
+}
+
 void ListaReserva::clear() {
     if (!head) return;
     NodoReserva* temp = head->next;
@@ -49,10 +53,6 @@ void ListaReserva::clear() {
     delete head;
     head = nullptr;
     autoincID = 1001;
-}
-
-ListaReserva::~ListaReserva() {
-    clear();
 }
 
 int ListaReserva::asientosOcupadosLocalidad(const string& localidad) {
@@ -201,6 +201,17 @@ int ListaReserva::contarAsientosPorCedula(const string& cedula) {
         temp = temp->next;
     } while (temp != head);
     return total;
+}
+
+vector<Reserva*> ListaReserva::obtenerReservasComoVector() {
+    vector<Reserva*> vec;
+    if (!head) return vec;
+    NodoReserva* temp = head;
+    do {
+        vec.push_back(temp->reserva);
+        temp = temp->next;
+    } while (temp != head);
+    return vec;
 }
 
 vector<Reserva*> ListaReserva::obtenerReservasOrdenadasPorNombre() {

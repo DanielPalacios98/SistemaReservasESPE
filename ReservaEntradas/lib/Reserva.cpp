@@ -4,9 +4,9 @@
 #include <algorithm>
 using namespace std;
 
-Reserva::Reserva(int idReserva, const string& nombres, const string& cedula,
-                 const string& telefono, const string& correo,
-                 const string& localidad, int numAsientos)
+Reserva::Reserva(int idReserva, const string& nombres, const string& cedula, 
+        const string& telefono, const string& correo,
+        const string& localidad, int numAsientos)
     : idReserva(idReserva), nombres(nombres), cedula(cedula),
       telefono(telefono), correo(correo), localidad(localidad),
       numAsientos(numAsientos) {}
@@ -21,6 +21,7 @@ int Reserva::getNumAsientos() const { return numAsientos; }
 void Reserva::setNumAsientos(int n) { numAsientos = n; }
 
 bool Reserva::validarNombres(const string& nom) {
+    // Exige al menos dos palabras, cada una con mayúscula inicial, solo letras.
     regex re("^([A-Z][a-z]+)( [A-Z][a-z]+)+$");
     return regex_match(nom, re);
 }
@@ -61,12 +62,7 @@ bool Reserva::validarLocalidad(const string& loc) {
 }
 
 void Reserva::mostrarDetalle() const {
-    cout << "ID: " << idReserva
-         << " | Nombre: " << nombres
-         << " | Cedula: " << cedula
-         << " | Telefono: " << telefono
-         << " | Correo: " << correo
-         << " | Localidad: " << localidad
-         << " | Asientos: " << numAsientos
-         << endl;
+    cout << "ID: " << idReserva << " | Nombre: " << nombres << " | Cedula: " << cedula
+         << " | Telefono: " << telefono << " | Correo: " << correo
+         << " | Localidad: " << localidad << " | Asientos: " << numAsientos << endl;
 }

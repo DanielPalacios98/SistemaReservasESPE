@@ -1,10 +1,10 @@
 #pragma once
 #include "Reserva.h"
 
-struct NodoReserva {
+class NodoReserva {
+public:
     Reserva* reserva;
     NodoReserva* next;
-
-    explicit NodoReserva(Reserva* r);
+    NodoReserva(Reserva* reserva);
     ~NodoReserva();
 };

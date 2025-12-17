@@ -1,2 +1,8 @@
 1001,Daniel Palacios,1719099648,0979283932,danie@gmail.com,palco,5
-1002,Samuel Davalos,1718900655,0978541212,daniel@mail.com,palco,5
+1003,Olga Marin,1701076596,0984134775,waferita33@hotmail.com,general,2
+1004,Pablo Cifuentes,1719099630,0992855554,pgcifuentes@gmail.com,tribuna,1
+1005,Fernanda Montalvo,1714380779,0984555898,ferchamon@gmail.com,general,2
+1006,Ilhan Torres,1754144390,0984555898,ilhantorres@hotmail.com,general,1
+1007,Luis Montalvo,1714380779,0984555898,ferchamon@gmail.com,general,2
+1008,Luisa Torres,1754144390,0984555898,ilhantorres@hotmail.com,general,1
+1009,Samuel Davalos,1718900655,0984134775,sedavalos1@espe.edu.ec,tribuna,2

@@ -11,9 +11,8 @@ private:
     string correo;
     string localidad;
     int numAsientos;
-
 public:
-    Reserva(int idReserva, const string& nombres, const string& cedula,
+    Reserva(int idReserva, const string& nombres, const string& cedula, 
             const string& telefono, const string& correo,
             const string& localidad, int numAsientos);
 
@@ -26,6 +25,7 @@ public:
     int getNumAsientos() const;
     void setNumAsientos(int);
 
+    // Validadores
     static bool validarNombres(const string&);
     static bool validarCedula(const string&);
     static bool validarTelefono(const string&);
