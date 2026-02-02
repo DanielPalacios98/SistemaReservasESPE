@@ -5,31 +5,34 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <vector>
 #include <cctype>
 #include <exception>
 using namespace std;
 
-// QuickSort auxiliar
-static int particion(vector<Reserva*>& arr, int low, int high, bool porNombre) {
+// QuickSort auxiliar sobre arreglo dinámico de Reserva*
+static int particionArr(Reserva** arr, int low, int high, bool porNombre) {
     string piv = porNombre ? arr[high]->getNombres() : arr[high]->getCedula();
     int i = low - 1;
     for (int j = low; j < high; ++j) {
         string actual = porNombre ? arr[j]->getNombres() : arr[j]->getCedula();
         if (actual < piv) {
             ++i;
-            swap(arr[i], arr[j]);
+            Reserva* tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
         }
     }
-    swap(arr[i + 1], arr[high]);
+    Reserva* tmp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = tmp;
     return i + 1;
 }
 
-static void quickSort(vector<Reserva*>& arr, int low, int high, bool porNombre) {
+static void quickSortArr(Reserva** arr, int low, int high, bool porNombre) {
     if (low < high) {
-        int pi = particion(arr, low, high, porNombre);
-        quickSort(arr, low, pi - 1, porNombre);
-        quickSort(arr, pi + 1, high, porNombre);
+        int pi = particionArr(arr, low, high, porNombre);
+        quickSortArr(arr, low, pi - 1, porNombre);
+        quickSortArr(arr, pi + 1, high, porNombre);
     }
 }
 
@@ -203,35 +206,24 @@ int ListaReserva::contarAsientosPorCedula(const string& cedula) {
     return total;
 }
 
-vector<Reserva*> ListaReserva::obtenerReservasComoVector() {
-    vector<Reserva*> vec;
-    if (!head) return vec;
-    NodoReserva* temp = head;
-    do {
-        vec.push_back(temp->reserva);
-        temp = temp->next;
-    } while (temp != head);
-    return vec;
-}
-
-vector<Reserva*> ListaReserva::obtenerReservasOrdenadasPorNombre() {
-    vector<Reserva*> vec = obtenerReservasComoVector();
-    sort(vec.begin(), vec.end(), [](Reserva* a, Reserva* b) {
-        return a->getNombres() < b->getNombres();
-    });
-    return vec;
-}
-
 void ListaReserva::mostrarReservasOrdenadas(bool porNombre) {
-    vector<Reserva*> arr = obtenerReservasComoVector();
-    if (arr.empty()) {
+    if (!head) {
         cout << "No hay reservas." << endl;
         return;
     }
-    quickSort(arr, 0, static_cast<int>(arr.size()) - 1, porNombre);
+    // Contar elementos
+    int n = 0;
+    NodoReserva* temp = head;
+    do { ++n; temp = temp->next; } while (temp != head);
+    // Copiar a arreglo dinámico
+    Reserva** arr = new Reserva*[n];
+    temp = head;
+    for (int i = 0; i < n; ++i) { arr[i] = temp->reserva; temp = temp->next; }
+    // Ordenar
+    quickSortArr(arr, 0, n - 1, porNombre);
     cout << "=== Reservas ordenadas por " << (porNombre ? "nombre" : "cedula") << " ===" << endl;
-    for (auto r : arr)
-        r->mostrarDetalle();
+    for (int i = 0; i < n; ++i) arr[i]->mostrarDetalle();
+    delete[] arr;
 }
 
 void ListaReserva::guardarEnArchivo(const string& filename) {
@@ -319,4 +311,26 @@ void ListaReserva::cargarDesdeArchivo(const string& filename) {
 void ListaReserva::recargarDesdeArchivo(const string& filename) {
     clear();
     cargarDesdeArchivo(filename);
+}
+
+void ListaReserva::construirBST(BSTReservas& bst) {
+    if (!head) return;
+    NodoReserva* temp = head;
+    do {
+        bst.insertar(temp->reserva);
+        temp = temp->next;
+    } while (temp != head);
+}
+
+void ListaReserva::recorrer(void (*fn)(Reserva*)) {
+    if (!head || !fn) return;
+    NodoReserva* temp = head;
+    do {
+        fn(temp->reserva);
+        temp = temp->next;
+    } while (temp != head);
+}
+
+NodoReserva* ListaReserva::obtenerHead() const {
+    return head;
 }

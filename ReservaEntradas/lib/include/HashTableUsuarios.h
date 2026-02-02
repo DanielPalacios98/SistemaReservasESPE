@@ -1,15 +1,20 @@
 #pragma once
 #include "Usuario.h"
 #include <string>
-#include <vector>
-using namespace std;
+
+class NodoUsuario {
+public:
+    Usuario usuario;
+    NodoUsuario* next;
+    explicit NodoUsuario(const Usuario& u) : usuario(u), next(nullptr) {}
+};
 
 class HashTableUsuarios {
 private:
-    vector<vector<Usuario>> buckets;
+    NodoUsuario** buckets;
     size_t capacidad;
 
-    size_t hashCedula(const string& cedula) const {
+    size_t hashCedula(const std::string& cedula) const {
         unsigned long h = 0;
         for (char c : cedula) {
             h = h * 31 + static_cast<unsigned char>(c);
@@ -19,34 +24,54 @@ private:
 
 public:
     explicit HashTableUsuarios(size_t cap = 101)
-        : buckets(cap), capacidad(cap) {}
+        : buckets(nullptr), capacidad(cap) {
+        buckets = new NodoUsuario*[capacidad];
+        for (size_t i = 0; i < capacidad; ++i) buckets[i] = nullptr;
+    }
+
+    ~HashTableUsuarios() {
+        for (size_t i = 0; i < capacidad; ++i) {
+            NodoUsuario* curr = buckets[i];
+            while (curr) {
+                NodoUsuario* next = curr->next;
+                delete curr;
+                curr = next;
+            }
+        }
+        delete[] buckets;
+    }
 
     bool insertar(const Usuario& u) {
         size_t idx = hashCedula(u.getCedula());
-        auto& lista = buckets[idx];
-        for (const auto& existente : lista) {
-            if (existente.getCedula() == u.getCedula()) {
+        NodoUsuario* curr = buckets[idx];
+        while (curr) {
+            if (curr->usuario.getCedula() == u.getCedula()) {
                 return false; // cédula duplicada
             }
+            curr = curr->next;
         }
-        lista.push_back(u);
+        NodoUsuario* nuevo = new NodoUsuario(u);
+        nuevo->next = buckets[idx];
+        buckets[idx] = nuevo;
         return true;
     }
 
-    bool existe(const string& cedula) const {
+    bool existe(const std::string& cedula) const {
         size_t idx = hashCedula(cedula);
-        const auto& lista = buckets[idx];
-        for (const auto& u : lista) {
-            if (u.getCedula() == cedula) return true;
+        NodoUsuario* curr = buckets[idx];
+        while (curr) {
+            if (curr->usuario.getCedula() == cedula) return true;
+            curr = curr->next;
         }
         return false;
     }
 
-    const Usuario* obtener(const string& cedula) const {
+    const Usuario* obtener(const std::string& cedula) const {
         size_t idx = hashCedula(cedula);
-        const auto& lista = buckets[idx];
-        for (const auto& u : lista) {
-            if (u.getCedula() == cedula) return &u;
+        NodoUsuario* curr = buckets[idx];
+        while (curr) {
+            if (curr->usuario.getCedula() == cedula) return &curr->usuario;
+            curr = curr->next;
         }
         return nullptr;
     }

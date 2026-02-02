@@ -3,7 +3,6 @@
 #include "lib/include/BSTReservas.h"
 #include <iostream>
 #include <limits>
-#include <vector>
 #include <cctype>
 #include <algorithm>
 using namespace std;
@@ -49,13 +48,8 @@ int main() {
     // Carga inicial desde archivo
     reservas.cargarDesdeArchivo("reservas.txt");
 
-    // Construir BST por ID
-    {
-        vector<Reserva*> vec = reservas.obtenerReservasComoVector();
-        for (auto r : vec) {
-            arbol.insertar(r);
-        }
-    }
+    // Construir BST por ID sin vectores
+    reservas.construirBST(arbol);
 
     int op = -1;
     while (op != 0) {
@@ -176,8 +170,7 @@ int main() {
 
                 // Reconstruir BST
                 BSTReservas nuevoArbol;
-                vector<Reserva*> vec = reservas.obtenerReservasComoVector();
-                for (auto r : vec) nuevoArbol.insertar(r);
+                reservas.construirBST(nuevoArbol);
                 arbol = nuevoArbol;
             } else {
                 cout << "No se encontro esa reserva." << endl;
@@ -199,13 +192,14 @@ int main() {
         // 6) Shell sort caracteres del primer nombre
         if (op == 6) {
             reservas.recargarDesdeArchivo("reservas.txt");
-            vector<Reserva*> vec = reservas.obtenerReservasComoVector();
-            if (vec.empty()) {
+            NodoReserva* head = reservas.obtenerHead();
+            if (!head) {
                 cout << "No hay reservas para procesar desde el archivo." << endl;
             } else {
                 cout << "Ordenando primer nombre de cada reserva (caracteres) usando Shell Sort:\n";
-                for (auto r : vec) {
-                    string nombresTmp = r->getNombres();
+                NodoReserva* tmp = head;
+                do {
+                    string nombresTmp = tmp->reserva->getNombres();
                     size_t posEspacio = nombresTmp.find(' ');
                     string soloNombre = (posEspacio != string::npos) ? nombresTmp.substr(0, posEspacio) : nombresTmp;
                     int n = static_cast<int>(soloNombre.size());
@@ -240,27 +234,22 @@ int main() {
                         delete[] caracteres;
                     }
                     cout << endl;
-                }
+                    tmp = tmp->next;
+                } while (tmp != head);
             }
         }
 
         // 7) Buscar por ID
         if (op == 7) {
-            vector<Reserva*> vec = reservas.obtenerReservasComoVector();
             int idBuscar;
             cout << "Ingrese ID a buscar: ";
             cin >> idBuscar;
             limpiarBuffer();
-            bool encontrado = false;
-            for (auto r : vec) {
-                if (r->getIdReserva() == idBuscar) {
-                    cout << "Reserva encontrada:" << endl;
-                    r->mostrarDetalle();
-                    encontrado = true;
-                    break;
-                }
-            }
-            if (!encontrado) {
+            Reserva* r = arbol.buscar(idBuscar);
+            if (r) {
+                cout << "Reserva encontrada:" << endl;
+                r->mostrarDetalle();
+            } else {
                 cout << "No se encontro reserva con ese ID." << endl;
             }
         }
@@ -268,36 +257,34 @@ int main() {
         // 8) Buscar por nombre
         if (op == 8) {
             reservas.recargarDesdeArchivo("reservas.txt");
-            vector<Reserva*> vec = reservas.obtenerReservasOrdenadasPorNombre();
-            if (vec.empty()) {
+            NodoReserva* head = reservas.obtenerHead();
+            if (!head) {
                 cout << "No hay reservas para buscar.\n";
             } else {
                 string nombreBuscar;
                 cout << "Ingrese el nombre completo a buscar: ";
                 getline(cin, nombreBuscar);
-
-                auto it = lower_bound(vec.begin(), vec.end(), nombreBuscar,
-                    [](Reserva* r, const string& val) {
-                        return r->getNombres() < val;
-                    });
-
-                if (it != vec.end() && (*it)->getNombres() == nombreBuscar) {
-                    cout << "Reservas encontradas con el nombre '" << nombreBuscar << "':\n";
-                    for (; it != vec.end() && (*it)->getNombres() == nombreBuscar; ++it) {
-                        (*it)->mostrarDetalle();
+                int encontrados = 0;
+                NodoReserva* tmp = head;
+                do {
+                    if (tmp->reserva->getNombres() == nombreBuscar) {
+                        if (encontrados == 0)
+                            cout << "Reservas encontradas con el nombre '" << nombreBuscar << "':\n";
+                        tmp->reserva->mostrarDetalle();
                         cout << "---\n";
+                        ++encontrados;
                     }
-                } else {
-                    cout << "No se encontro reserva con ese nombre.\n";
-                }
+                    tmp = tmp->next;
+                } while (tmp != head);
+                if (encontrados == 0) cout << "No se encontro reserva con ese nombre.\n";
             }
         }
 
         // 9) Buscar por telefono (lineal)
         if (op == 9) {
             reservas.recargarDesdeArchivo("reservas.txt");
-            vector<Reserva*> vec = reservas.obtenerReservasComoVector();
-            if (vec.empty()) {
+            NodoReserva* head = reservas.obtenerHead();
+            if (!head) {
                 cout << "No hay reservas para buscar.\n";
             } else {
                 string telefonoBuscar;
@@ -315,21 +302,20 @@ int main() {
 
                 cout << "Buscando telefono: " << telefonoBuscar << endl;
 
-                vector<Reserva*> encontradas;
-                for (auto r : vec) {
-                    if (r->getTelefono() == telefonoBuscar) {
-                        encontradas.push_back(r);
-                    }
-                }
-
-                cout << "Encontradas: " << encontradas.size() << endl;
-                if (!encontradas.empty()) {
-                    cout << "Reservas encontradas con el telefono '" << telefonoBuscar << "':\n";
-                    for (auto r : encontradas) {
-                        r->mostrarDetalle();
+                int encontrados = 0;
+                NodoReserva* tmp = head;
+                do {
+                    if (tmp->reserva->getTelefono() == telefonoBuscar) {
+                        ++encontrados;
+                        if (encontrados == 1)
+                            cout << "Reservas encontradas con el telefono '" << telefonoBuscar << "':\n";
+                        tmp->reserva->mostrarDetalle();
                         cout << "---\n";
                     }
-                } else {
+                    tmp = tmp->next;
+                } while (tmp != head);
+                cout << "Encontradas: " << encontrados << endl;
+                if (encontrados == 0) {
                     cout << "No se encontro reserva con ese telefono.\n";
                 }
             }

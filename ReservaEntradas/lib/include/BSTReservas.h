@@ -1,7 +1,8 @@
 #pragma once
 #include "Reserva.h"
 
-struct NodoBST {
+class NodoBST {
+public:
     int id;
     Reserva* reserva;
     NodoBST* izq;

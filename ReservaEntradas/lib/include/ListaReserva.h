@@ -1,8 +1,7 @@
 #pragma once
 #include "NodoReserva.h"
+#include "BSTReservas.h"
 #include <string>
-#include <vector>
-using namespace std;
 
 // Cupos máximos por localidad
 const int MAX_PALCO   = 10;
@@ -15,18 +14,18 @@ private:
     int autoincID;       // ID autoincremental para nuevas reservas
 
     // Suma de asientos ocupados en una localidad (palco/tribuna/general)
-    int asientosOcupadosLocalidad(const string& localidad);
+    int asientosOcupadosLocalidad(const std::string& localidad);
 
 public:
     ListaReserva();
     ~ListaReserva();
 
     // Agrega una reserva si hay cupo y no supera 5 asientos por cédula
-    Reserva* agregarReserva(const string& nombres,
-                            const string& cedula,
-                            const string& telefono,
-                            const string& correo,
-                            const string& localidad,
+    Reserva* agregarReserva(const std::string& nombres,
+                            const std::string& cedula,
+                            const std::string& telefono,
+                            const std::string& correo,
+                            const std::string& localidad,
                             int asientos);
 
     void mostrarReservas();
@@ -36,20 +35,23 @@ public:
     bool eliminarPorID(int id);
 
     int contarAsientosPorID(int id);
-    int contarAsientosPorCedula(const string& cedula);
-
-    // Convierte la lista circular en un vector de punteros para ordenamiento
-    vector<Reserva*> obtenerReservasComoVector();
-
-    // Obtiene vector ordenado por nombre para búsqueda binaria
-    vector<Reserva*> obtenerReservasOrdenadasPorNombre();
+    int contarAsientosPorCedula(const std::string& cedula);
 
     // Muestra reservas ordenadas por nombre (true) o por cedula (false)
     void mostrarReservasOrdenadas(bool porNombre);
 
+    // Construye el BST insertando todas las reservas actuales
+    void construirBST(BSTReservas& bst);
+
+    // Recorre todas las reservas aplicando una función visitante
+    void recorrer(void (*fn)(Reserva*));
+
+    // Acceso controlado al inicio de la lista para recorridos externos
+    NodoReserva* obtenerHead() const;
+
     // Persistencia actual en TXT (CSV simple)
-    void guardarEnArchivo(const string& filename);
-    void cargarDesdeArchivo(const string& filename);
+    void guardarEnArchivo(const std::string& filename);
+    void cargarDesdeArchivo(const std::string& filename);
     void clear();
-    void recargarDesdeArchivo(const string& filename);
+    void recargarDesdeArchivo(const std::string& filename);
 };
