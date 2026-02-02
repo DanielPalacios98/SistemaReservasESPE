@@ -111,3 +111,5 @@ Puedes forkear el repositorio, enviar un pull request o contactarme directamente
 Este proyecto es académico y abierto; puedes usarlo y modificarlo libremente citando al autor.
 
 ***
+
+añadido colaborador samuel davalos 
