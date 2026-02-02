@@ -45,8 +45,10 @@ int main() {
     ListaReserva reservas;
     BSTReservas arbol;
 
-    // Carga inicial desde archivo
-    reservas.cargarDesdeArchivo("reservas.txt");
+    // Carga inicial: intentar JSON, fallback a TXT
+    if (!reservas.cargarDesdeJson("reservas.json")) {
+        reservas.cargarDesdeArchivo("reservas.txt");
+    }
 
     // Construir BST por ID sin vectores
     reservas.construirBST(arbol);
@@ -151,13 +153,19 @@ int main() {
             Reserva* nueva = reservas.agregarReserva(nombres, cedula, telefono, correo, localidad, asientos);
             if (nueva != nullptr) {
                 arbol.insertar(nueva);
+                // Persistir en JSON, JSONL y TXT para compatibilidad y migración
+                reservas.guardarEnJson("reservas.json");
+                reservas.guardarEnJsonLines("reservas.jsonl");
                 reservas.guardarEnArchivo("reservas.txt");
             }
         }
 
         // 2) Mostrar reservas
         if (op == 2) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            // Recargar desde JSON prioritariamente
+            if (!reservas.cargarDesdeJson("reservas.json")) {
+                reservas.recargarDesdeArchivo("reservas.txt");
+            }
             reservas.mostrarReservas();
         }
 
@@ -166,6 +174,8 @@ int main() {
             int idelim = pedirIDValido();
             if (reservas.eliminarPorID(idelim)) {
                 cout << "Reserva ID " << idelim << " eliminada." << endl;
+                reservas.guardarEnJson("reservas.json");
+                reservas.guardarEnJsonLines("reservas.jsonl");
                 reservas.guardarEnArchivo("reservas.txt");
 
                 // Reconstruir BST
@@ -179,19 +189,25 @@ int main() {
 
         // 4) Mostrar ordenadas por nombre
         if (op == 4) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!reservas.cargarDesdeJson("reservas.json")) {
+                reservas.recargarDesdeArchivo("reservas.txt");
+            }
             reservas.mostrarReservasOrdenadas(true);
         }
 
         // 5) Mostrar ordenadas por cedula
         if (op == 5) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!reservas.cargarDesdeJson("reservas.json")) {
+                reservas.recargarDesdeArchivo("reservas.txt");
+            }
             reservas.mostrarReservasOrdenadas(false);
         }
 
         // 6) Shell sort caracteres del primer nombre
         if (op == 6) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!reservas.cargarDesdeJson("reservas.json")) {
+                reservas.recargarDesdeArchivo("reservas.txt");
+            }
             NodoReserva* head = reservas.obtenerHead();
             if (!head) {
                 cout << "No hay reservas para procesar desde el archivo." << endl;
@@ -323,6 +339,8 @@ int main() {
     } // cierra while(op != 0)
 
     cout << "Guardando y saliendo..." << endl;
+    reservas.guardarEnJson("reservas.json");
+    reservas.guardarEnJsonLines("reservas.jsonl");
     reservas.guardarEnArchivo("reservas.txt");
     return 0;
 }

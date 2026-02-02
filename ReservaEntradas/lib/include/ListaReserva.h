@@ -54,4 +54,11 @@ public:
     void cargarDesdeArchivo(const std::string& filename);
     void clear();
     void recargarDesdeArchivo(const std::string& filename);
+
+    // Persistencia en JSON
+    void guardarEnJson(const std::string& filename) const;
+    bool cargarDesdeJson(const std::string& filename);
+
+    // Export en formato JSON Lines (una reserva por línea)
+    void guardarEnJsonLines(const std::string& filename) const;
 };

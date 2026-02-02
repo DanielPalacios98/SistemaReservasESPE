@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <exception>
+#include <regex>
 using namespace std;
 
 // QuickSort auxiliar sobre arreglo dinámico de Reserva*
@@ -333,4 +334,157 @@ void ListaReserva::recorrer(void (*fn)(Reserva*)) {
 
 NodoReserva* ListaReserva::obtenerHead() const {
     return head;
+}
+
+// --- JSON helpers ---
+static string jsonEscape(const string& s) {
+    string out;
+    out.reserve(s.size() + 8);
+    for (char c : s) {
+        switch (c) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out += c; break;
+        }
+    }
+    return out;
+}
+
+static string jsonUnescape(const string& s) {
+    string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == '\\' && i + 1 < s.size()) {
+            char n = s[i + 1];
+            switch (n) {
+                case 'n': out += '\n'; ++i; break;
+                case 'r': out += '\r'; ++i; break;
+                case 't': out += '\t'; ++i; break;
+                case '"': out += '"'; ++i; break;
+                case '\\': out += '\\'; ++i; break;
+                default: out += n; ++i; break;
+            }
+        } else {
+            out += c;
+        }
+    }
+    return out;
+}
+
+void ListaReserva::guardarEnJson(const string& filename) const {
+    ofstream out(filename);
+    if (!out.is_open()) return;
+    out << "{\n  \"reservas\": [\n";
+    if (head) {
+        // Recorrer y escribir objetos
+        NodoReserva* temp = head;
+        bool first = true;
+        do {
+            if (!first) out << ",\n";
+            first = false;
+            const Reserva* r = temp->reserva;
+            out << "    {\n";
+            out << "      \"idReserva\": " << r->getIdReserva() << ",\n";
+            out << "      \"nombres\": \"" << jsonEscape(r->getNombres()) << "\",\n";
+            out << "      \"cedula\": \"" << jsonEscape(r->getCedula()) << "\",\n";
+            out << "      \"telefono\": \"" << jsonEscape(r->getTelefono()) << "\",\n";
+            out << "      \"correo\": \"" << jsonEscape(r->getCorreo()) << "\",\n";
+            out << "      \"localidad\": \"" << jsonEscape(r->getLocalidad()) << "\",\n";
+            out << "      \"numAsientos\": " << r->getNumAsientos() << "\n";
+            out << "    }";
+            temp = temp->next;
+        } while (temp != head);
+        out << "\n";
+    }
+    out << "  ]\n}";
+    out.close();
+}
+
+bool ListaReserva::cargarDesdeJson(const string& filename) {
+    ifstream in(filename);
+    if (!in.is_open()) return false;
+    // Leer todo el archivo en un string
+    string content;
+    in.seekg(0, ios::end);
+    content.reserve(static_cast<size_t>(in.tellg()));
+    in.seekg(0, ios::beg);
+    content.assign(istreambuf_iterator<char>(in), istreambuf_iterator<char>());
+    in.close();
+
+    // Limpiar lista actual
+    clear();
+
+    // Buscar objetos dentro del JSON con regex básica
+    // Patrón estricto para el formato que generamos en guardarEnJson
+    regex objRe(
+        "\\{\\s*\\\"idReserva\\\"\\s*:\\s*(\\d+)\\s*,\\s*"
+        "\\\"nombres\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
+        "\\\"cedula\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
+        "\\\"telefono\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
+        "\\\"correo\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
+        "\\\"localidad\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
+        "\\\"numAsientos\\\"\\s*:\\s*(\\d+)\\s*\\}"
+    );
+
+    auto it = sregex_iterator(content.begin(), content.end(), objRe);
+    auto end = sregex_iterator();
+    for (; it != end; ++it) {
+        smatch m = *it;
+        int id = stoi(m[1].str());
+        string nombres = jsonUnescape(m[2].str());
+        string cedula = jsonUnescape(m[3].str());
+        string telefono = jsonUnescape(m[4].str());
+        string correo = jsonUnescape(m[5].str());
+        string localidad = jsonUnescape(m[6].str());
+        int numAs = stoi(m[7].str());
+
+        // Validaciones básicas consientes con TXT
+        if (!Reserva::validarCedula(cedula) || !Reserva::validarNombres(nombres) ||
+            !Reserva::validarTelefono(telefono) || !Reserva::validarCorreo(correo) ||
+            !Reserva::validarLocalidad(localidad) || numAs < 1 || numAs > 5) {
+            cout << "Aviso: objeto JSON ignorado por validacion: id=" << id << "\n";
+            continue;
+        }
+
+        if (id >= autoincID) autoincID = id + 1;
+
+        Reserva* r = new Reserva(id, nombres, cedula, telefono, correo, localidad, numAs);
+        NodoReserva* nodo = new NodoReserva(r);
+        if (!head) {
+            head = nodo;
+            head->next = head;
+        } else {
+            NodoReserva* tail = head;
+            while (tail->next != head) tail = tail->next;
+            tail->next = nodo;
+            nodo->next = head;
+        }
+    }
+
+    return head != nullptr;
+}
+
+void ListaReserva::guardarEnJsonLines(const string& filename) const {
+    ofstream out(filename);
+    if (!out.is_open()) return;
+    if (!head) { out.close(); return; }
+    NodoReserva* temp = head;
+    do {
+        const Reserva* r = temp->reserva;
+        out << "{"
+            << "\"idReserva\":" << r->getIdReserva() << ","
+            << "\"nombres\":\"" << jsonEscape(r->getNombres()) << "\"," 
+            << "\"cedula\":\"" << jsonEscape(r->getCedula()) << "\"," 
+            << "\"telefono\":\"" << jsonEscape(r->getTelefono()) << "\"," 
+            << "\"correo\":\"" << jsonEscape(r->getCorreo()) << "\"," 
+            << "\"localidad\":\"" << jsonEscape(r->getLocalidad()) << "\"," 
+            << "\"numAsientos\":" << r->getNumAsientos()
+            << "}\n";
+        temp = temp->next;
+    } while (temp != head);
+    out.close();
 }

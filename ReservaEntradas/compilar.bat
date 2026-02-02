@@ -23,6 +23,13 @@ echo.
 echo === FIN DE COMPILACION ===
 
 echo.
+REM Si se pasa el argumento build-only, no ejecutar el programa
+if /I "%~1"=="build-only" (
+    echo.
+    echo Modo build-only: no se ejecuta el programa.
+    goto :EOF
+)
+
 echo Ejecutando ReservaEntradas.exe...
 echo.
 

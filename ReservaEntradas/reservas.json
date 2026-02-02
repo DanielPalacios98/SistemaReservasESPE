@@ -1,0 +1,85 @@
+{
+  "reservas": [
+    {
+      "idReserva": 1001,
+      "nombres": "Daniel Palacios",
+      "cedula": "1719099648",
+      "telefono": "0979283932",
+      "correo": "danie@gmail.com",
+      "localidad": "palco",
+      "numAsientos": 5
+    },
+    {
+      "idReserva": 1003,
+      "nombres": "Olga Marin",
+      "cedula": "1701076596",
+      "telefono": "0984134775",
+      "correo": "waferita33@hotmail.com",
+      "localidad": "general",
+      "numAsientos": 2
+    },
+    {
+      "idReserva": 1004,
+      "nombres": "Pablo Cifuentes",
+      "cedula": "1719099630",
+      "telefono": "0992855554",
+      "correo": "pgcifuentes@gmail.com",
+      "localidad": "tribuna",
+      "numAsientos": 1
+    },
+    {
+      "idReserva": 1005,
+      "nombres": "Fernanda Montalvo",
+      "cedula": "1714380779",
+      "telefono": "0984555898",
+      "correo": "ferchamon@gmail.com",
+      "localidad": "general",
+      "numAsientos": 2
+    },
+    {
+      "idReserva": 1006,
+      "nombres": "Ilhan Torres",
+      "cedula": "1754144390",
+      "telefono": "0984555898",
+      "correo": "ilhantorres@hotmail.com",
+      "localidad": "general",
+      "numAsientos": 1
+    },
+    {
+      "idReserva": 1007,
+      "nombres": "Luis Montalvo",
+      "cedula": "1714380779",
+      "telefono": "0984555898",
+      "correo": "ferchamon@gmail.com",
+      "localidad": "general",
+      "numAsientos": 2
+    },
+    {
+      "idReserva": 1008,
+      "nombres": "Luisa Torres",
+      "cedula": "1754144390",
+      "telefono": "0984555898",
+      "correo": "ilhantorres@hotmail.com",
+      "localidad": "general",
+      "numAsientos": 1
+    },
+    {
+      "idReserva": 1009,
+      "nombres": "Samuel Davalos",
+      "cedula": "1718900655",
+      "telefono": "0984134775",
+      "correo": "sedavalos1@espe.edu.ec",
+      "localidad": "tribuna",
+      "numAsientos": 2
+    },
+    {
+      "idReserva": 1010,
+      "nombres": "Samuel Davalos Montalvo",
+      "cedula": "1718900655",
+      "telefono": "0979283932",
+      "correo": "samdav@mail.com",
+      "localidad": "general",
+      "numAsientos": 2
+    }
+  ]
+}
