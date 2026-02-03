@@ -48,6 +48,15 @@ public:
     BSTReservas() : raiz(nullptr) {}
     ~BSTReservas() { destruirRec(raiz); }
 
+    // Prohibir copia para evitar duplicar/destruir punteros compartidos
+    BSTReservas(const BSTReservas&) = delete;
+    BSTReservas& operator=(const BSTReservas&) = delete;
+
+    void clear() {
+        destruirRec(raiz);
+        raiz = nullptr;
+    }
+
     void insertar(Reserva* r) {
         if (!r) return;
         insertarRec(raiz, r);

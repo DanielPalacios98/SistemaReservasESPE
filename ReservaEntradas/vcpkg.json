@@ -1,0 +1,13 @@
+{
+  "name": "reserva-entradas",
+  "version-string": "0.1.0",
+  "dependencies": [
+    {
+      "name": "mongo-cxx-driver",
+      "default-features": true,
+      "platform": "windows"
+    },
+    "wxwidgets",
+    "nlohmann-json"
+  ]
+}

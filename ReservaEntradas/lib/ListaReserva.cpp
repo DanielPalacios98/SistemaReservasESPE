@@ -86,18 +86,10 @@ Reserva* ListaReserva::agregarReserva(const string& nombres, const string& cedul
         return nullptr;
     }
 
-    int totalAsientos = 0;
-    NodoReserva* temp = head;
-    if (temp) {
-        do {
-            if (temp->reserva->getCedula() == cedula)
-                totalAsientos += temp->reserva->getNumAsientos();
-            temp = temp->next;
-        } while (temp && temp != head);
-    }
-
-    if (totalAsientos + asientos > 5) {
-        cout << "Este usuario ya ha reservado el maximo permitido (5 asientos)." << endl;
+    // Regla del cliente: máximo 5 reservas por cédula (no por asientos)
+    int reservasUsuario = contarReservasPorCedula(cedula);
+    if (reservasUsuario >= 5) {
+        cout << "Este usuario ya ha alcanzado el maximo de 5 reservas." << endl;
         return nullptr;
     }
 
@@ -205,6 +197,17 @@ int ListaReserva::contarAsientosPorCedula(const string& cedula) {
         temp = temp->next;
     } while (temp != head);
     return total;
+}
+
+int ListaReserva::contarReservasPorCedula(const string& cedula) {
+    int conteo = 0;
+    if (!head) return 0;
+    NodoReserva* temp = head;
+    do {
+        if (temp->reserva->getCedula() == cedula) ++conteo;
+        temp = temp->next;
+    } while (temp != head);
+    return conteo;
 }
 
 void ListaReserva::mostrarReservasOrdenadas(bool porNombre) {

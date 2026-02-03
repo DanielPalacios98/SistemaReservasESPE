@@ -7,3 +7,6 @@
 {"idReserva":1008,"nombres":"Luisa Torres","cedula":"1754144390","telefono":"0984555898","correo":"ilhantorres@hotmail.com","localidad":"general","numAsientos":1}
 {"idReserva":1009,"nombres":"Samuel Davalos","cedula":"1718900655","telefono":"0984134775","correo":"sedavalos1@espe.edu.ec","localidad":"tribuna","numAsientos":2}
 {"idReserva":1010,"nombres":"Samuel Davalos Montalvo","cedula":"1718900655","telefono":"0979283932","correo":"samdav@mail.com","localidad":"general","numAsientos":2}
+{"idReserva":1011,"nombres":"Daniel Eduardo Palacios Gallardo","cedula":"1719099648","telefono":"0979283932","correo":"daniel@live.com","localidad":"tribuna","numAsientos":2}
+{"idReserva":1012,"nombres":"Daniel Eduardo Palacios Gallardo","cedula":"1719099648","telefono":"0979283932","correo":"daniel@live.com","localidad":"general","numAsientos":5}
+{"idReserva":1013,"nombres":"Daniel Eduardo Palacios Gallardo","cedula":"1719099648","telefono":"0979283932","correo":"daniel@mail.com","localidad":"palco","numAsientos":1}

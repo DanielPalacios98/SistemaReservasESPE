@@ -2,13 +2,39 @@
 #include <iostream>
 #include <algorithm>
 #include <cctype>
+#include "../include/JsonReservaRepository.h"
+#include "../include/MongoReservaRepository.h"
+#include "../include/Config.h"
 
 using namespace std;
 
 Controller::Controller(ConsoleView* v)
-    : tablaUsuarios(), reservas(), arbol(), view(v) {
-    // Carga inicial desde archivo
-    reservas.cargarDesdeArchivo("reservas.txt");
+    : tablaUsuarios(), reservas(), arbol(), view(v), repo(nullptr) {
+    // Selección por configuración
+    Config cfg = Config::load("config.json");
+    if (cfg.backend == "mongo" && !cfg.mongoUri.empty() && !cfg.mongoDb.empty() && !cfg.mongoCollection.empty()) {
+        repo = new MongoReservaRepository(cfg.mongoUri, cfg.mongoDb, cfg.mongoCollection);
+        if (!repo->cargar(reservas)) {
+            delete repo;
+            repo = new JsonReservaRepository();
+            repo->cargar(reservas);
+        }
+    } else {
+        repo = new JsonReservaRepository();
+        repo->cargar(reservas);
+    }
+    reservas.construirBST(arbol);
+}
+
+Controller::Controller(ConsoleView* v, IReservaRepository* repository)
+    : tablaUsuarios(), reservas(), arbol(), view(v), repo(repository) {
+    if (!repo) repo = new JsonReservaRepository();
+    if (!repo->cargar(reservas)) {
+        // Fallback a JSON en caso de error de carga
+        delete repo;
+        repo = new JsonReservaRepository();
+        repo->cargar(reservas);
+    }
     reservas.construirBST(arbol);
 }
 
@@ -101,12 +127,19 @@ void Controller::run() {
             Reserva* nueva = reservas.agregarReserva(nombres, cedula, telefono, correo, localidad, asientos);
             if (nueva != nullptr) {
                 arbol.insertar(nueva);
-                reservas.guardarEnArchivo("reservas.txt");
+                if (!repo->guardar(reservas)) {
+                    // Fallback a JSON si falla
+                    JsonReservaRepository jsonRepo;
+                    jsonRepo.guardar(reservas);
+                }
             }
         }
 
         if (op == 2) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!repo->cargar(reservas)) {
+                JsonReservaRepository jsonRepo;
+                jsonRepo.cargar(reservas);
+            }
             reservas.mostrarReservas();
         }
 
@@ -114,28 +147,37 @@ void Controller::run() {
             int idelim = view->pedirIDValido();
             if (reservas.eliminarPorID(idelim)) {
                 view->mostrarMensaje(string("Reserva ID ") + to_string(idelim) + " eliminada.");
-                reservas.guardarEnArchivo("reservas.txt");
+                repo->guardar(reservas);
 
-                BSTReservas nuevoArbol;
-                reservas.construirBST(nuevoArbol);
-                arbol = nuevoArbol;
+                // Reconstruir BST de forma segura (sin copiar árboles)
+                arbol.clear();
+                reservas.construirBST(arbol);
             } else {
                 view->mostrarMensaje("No se encontro esa reserva.");
             }
         }
 
         if (op == 4) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!repo->cargar(reservas)) {
+                JsonReservaRepository jsonRepo;
+                jsonRepo.cargar(reservas);
+            }
             reservas.mostrarReservasOrdenadas(true);
         }
 
         if (op == 5) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!repo->cargar(reservas)) {
+                JsonReservaRepository jsonRepo;
+                jsonRepo.cargar(reservas);
+            }
             reservas.mostrarReservasOrdenadas(false);
         }
 
         if (op == 6) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!repo->cargar(reservas)) {
+                JsonReservaRepository jsonRepo;
+                jsonRepo.cargar(reservas);
+            }
             NodoReserva* head = reservas.obtenerHead();
             if (!head) {
                 view->mostrarMensaje("No hay reservas para procesar desde el archivo.");
@@ -195,7 +237,7 @@ void Controller::run() {
         }
 
         if (op == 8) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            repo->cargar(reservas);
             NodoReserva* head = reservas.obtenerHead();
             if (!head) {
                 view->mostrarMensaje("No hay reservas para buscar.");
@@ -218,7 +260,9 @@ void Controller::run() {
         }
 
         if (op == 9) {
-            reservas.recargarDesdeArchivo("reservas.txt");
+            if (!reservas.cargarDesdeJson("reservas.json")) {
+                reservas.recargarDesdeArchivo("reservas.txt");
+            }
             NodoReserva* head = reservas.obtenerHead();
             if (!head) {
                 view->mostrarMensaje("No hay reservas para buscar.");
@@ -253,5 +297,8 @@ void Controller::run() {
     }
 
     view->mostrarMensaje("Guardando y saliendo...");
-    reservas.guardarEnArchivo("reservas.txt");
+    if (!repo->guardar(reservas)) {
+        JsonReservaRepository jsonRepo;
+        jsonRepo.guardar(reservas);
+    }
 }

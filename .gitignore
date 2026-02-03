@@ -1,0 +1,27 @@
+# Binaries and build outputs
+ReservaEntradas/bin/
+ReservaEntradas/obj/
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.obj
+
+# CMake build folders
+ReservaEntradas/build/
+build/
+out/
+
+# vcpkg
+ReservaEntradas/vcpkg_installed/
+vcpkg_installed/
+
+# IDE/Project files
+.vscode/
+.vs/
+*.depend
+*.layout
+*.cbp
+
+# Configuration files with secrets
+ReservaEntradas/config.json

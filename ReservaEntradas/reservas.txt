@@ -7,3 +7,6 @@
 1008,Luisa Torres,1754144390,0984555898,ilhantorres@hotmail.com,general,1
 1009,Samuel Davalos,1718900655,0984134775,sedavalos1@espe.edu.ec,tribuna,2
 1010,Samuel Davalos Montalvo,1718900655,0979283932,samdav@mail.com,general,2
+1011,Daniel Eduardo Palacios Gallardo,1719099648,0979283932,daniel@live.com,tribuna,2
+1012,Daniel Eduardo Palacios Gallardo,1719099648,0979283932,daniel@live.com,general,5
+1013,Daniel Eduardo Palacios Gallardo,1719099648,0979283932,daniel@mail.com,palco,1

@@ -1,115 +1,80 @@
-# README.md – Sistema de Reservas ESPE
+# Sistema de Reservas ESPE (Rama Mongo + CMake)
 
-## Descripción
+Esta rama (eature/mongo-cmake) introduce un sistema de construcci�n moderno basado en **CMake** y gesti�n de dependencias con **vcpkg**, adem�s de integraci�n completa con **MongoDB Atlas**.
 
-Este proyecto es un sistema de reservas de asientos implementado en C++ para eventos o auditorios.  
-Permite gestionar entradas de usuarios, validar los datos, asignar localidades y controlar el uso de cupos de manera robusta y segura.
+## Requisitos Previos
 
-***
+Para compilar y ejecutar esta versi�n, necesitas:
 
-## Características principales
+1.  **Visual Studio Build Tools 2022** (o Visual Studio Community):
+    *   Componente "Desarrollo para el escritorio con C++".
+    *   **Importante:** Aseg�rate de instalar el **Windows SDK 10** o 11.
+2.  **CMake** (versi�n 3.21 o superior).
+3.  **vcpkg**: Gestor de paquetes de C++ de Microsoft.
 
-- Validación estricta de todos los datos de entrada
-    - **Nombres y Apellidos:** Solo formato "Nombre Apellido", inicial mayúscula en cada palabra
-    - **Cédula:** Algoritmo oficial para Ecuador
-    - **Teléfono:** 10 dígitos, formato móvil ecuatoriano
-    - **Correo:** Formato estándar
-    - **Localidad:** Opciones fijas: palco, tribuna o general
-    - **Asientos:** Entre 1-5 por reserva, máximo 5 por usuario / cupo máximo por localidad
+## Configuraci�n del Entorno (vcpkg)
 
-- **Menú interactivo:**  
-  - Registro de nueva reserva
-  - Lista de reservas
-  - Eliminación por ID
-  - Mostrar reservas ordenadas por nombre/cédula (QuickSort, orden perfecto)
-  - Validación que impide avanzar con datos erróneos
+Si a�n no tienes vcpkg instalado:
 
-- **Estructura modular:**  
-  - Archivos organizados en carpetas por tipo (`src`, `include`, `bin`)
-  - Lista circular para manejo dinámico de reservas
+\\\powershell
+git clone https://github.com/microsoft/vcpkg.git c:\vcpkg
+cd c:\vcpkg
+.\bootstrap-vcpkg.bat
+# Agrega c:\vcpkg al PATH de tu sistema (opcional pero recomendado)
+\\\
 
-- **Automatización:**  
-  - Archivo `compilar.bat` para compilar y ejecutar el sistema con un solo clic
+## Compilaci�n
 
-***
+El proyecto utiliza un manifiesto (\cpkg.json\) para descargar e instalar autom�ticamente las dependencias (\mongo-cxx-driver\, \
+lohmann-json\, \wxwidgets\, etc.).
 
-## Estructura del repositorio
+1.  Abre una terminal en la carpeta \ReservaEntradas\:
+    \\\powershell
+    cd ReservaEntradas
+    \\\
 
-```
-SistemaReservasESPE/
-  ├─ src/                 # Archivos fuente (.cpp)
-  ├─ include/             # Archivos de cabecera (.h)
-  ├─ bin/Debug/           # Ejecutable y archivos de salida
-  ├─ compilar.bat         # Script de automatización
-  ├─ reservas.txt         # Archivo de persistencia de reservas
-  └─ README.md            # Este archivo
-```
+2.  **Configura el proyecto** (esto descargar� y compilar� las dependencias, puede tardar varios minutos la primera vez):
+    \\\powershell
+    cmake -S . -B build -DUSE_MONGO=ON -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    # Ajusta la ruta a vcpkg.cmake seg�n donde hayas instalado vcpkg
+    \\\
 
-***
+3.  **Compila**:
+    \\\powershell
+    cmake --build build --config Release
+    \\\
 
-## Instrucciones de compilación y ejecución
+## Configuraci�n de MongoDB
 
-**Requisitos:**  
-- Windows, compilador g++ instalado  
-- Editor recomendado: Visual Studio Code
+Para conectar a tu cluster de Atlas:
 
-**Compilación automática:**  
-- Ejecuta `compilar.bat` (doble clic o desde terminal con `compilar.bat`)
-    - Si la compilación es exitosa, inicia el programa automáticamente
+1.  Renombra el archivo \config.example.json\ a \config.json\.
+2.  Ed�talo con tu string de conexi�n:
+    \\\json
+    {
+      "backend": "mongo",
+      "mongoUri": "mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority",
+      "mongoDb": "Proyecto",
+      "mongoCollection": "ReservaEntradas"
+    }
+    \\\
+    *Nota: \config.json\ est� ignorado por git para proteger tus credenciales.*
 
-***
+## Ejecuci�n
 
-## Uso
+\\\powershell
+cd build/Release
+.\ReservaEntradas.exe
+\\\
 
-1. Ejecuta el sistema siguiendo las instrucciones anteriores
-2. Ingresa los datos solicitados en el menú
-3. Cada dato será validado; no podrás avanzar con valores erróneos
-4. Puedes listar, ordenar o eliminar reservas desde el menú
+## Estructura del Proyecto
 
-***
+*   \src/\, \include/\: C�digo fuente refactorizado.
+*   \lib/\: Implementaciones de repositorios (Mongo, JSON) y modelos.
+*   \cpkg.json\: Manifiesto de dependencias.
+*   \CMakeLists.txt\: Configuraci�n de construcci�n.
 
-## Ejemplo de entrada para registro
+## Notas
 
-```
-Nombres (ejemplo: Daniel Palacios): Daniel Palacios
-Cedula (10 dígitos ecuatorianos): 1710999648
-Telefono (10 dígitos, inicia con 09): 0979283932
-Correo: daniel@gmail.com
-Localidad (palco/tribuna/general): palco
-Cantidad de asientos (1-5): 3
-```
-
-***
-
-## Mejoras técnicas implementadas
-
-- Flujo a prueba de errores y entradas maliciosas
-- Criterios de validación ajustados a normativas reales ecuatorianas
-- Ordenamiento seguro y eficiente por nombre y cédula usando QuickSort
-- Mensajes y menú en español, listos para usuario final
-- Código preparado para crecer (editar, buscar, reportar)
-
-***
-
-## Autor
-
-Daniel Palacios  
-Estudiante de Ingeniería de Desarrollo de Software – ESPE  
-GitHub: [DanielPalacios98](https://github.com/DanielPalacios98/SistemaReservasESPE)
-
-***
-
-## Contacto y colaboración
-
-¿Quieres mejorar este proyecto o aplicarlo en otra situación?  
-Puedes forkear el repositorio, enviar un pull request o contactarme directamente por GitHub.
-
-***
-
-## Licencia
-
-Este proyecto es académico y abierto; puedes usarlo y modificarlo libremente citando al autor.
-
-***
-
-añadido colaborador samuel davalos 
+*   Si la conexi�n a Mongo falla, el sistema intentar� guardar en JSON local como fallback.
+*   El binario generado es dependiente de las DLLs en su misma carpeta (copiadas autom�ticamente tras el build).

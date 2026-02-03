@@ -80,6 +80,33 @@
       "correo": "samdav@mail.com",
       "localidad": "general",
       "numAsientos": 2
+    },
+    {
+      "idReserva": 1011,
+      "nombres": "Daniel Eduardo Palacios Gallardo",
+      "cedula": "1719099648",
+      "telefono": "0979283932",
+      "correo": "daniel@live.com",
+      "localidad": "tribuna",
+      "numAsientos": 2
+    },
+    {
+      "idReserva": 1012,
+      "nombres": "Daniel Eduardo Palacios Gallardo",
+      "cedula": "1719099648",
+      "telefono": "0979283932",
+      "correo": "daniel@live.com",
+      "localidad": "general",
+      "numAsientos": 5
+    },
+    {
+      "idReserva": 1013,
+      "nombres": "Daniel Eduardo Palacios Gallardo",
+      "cedula": "1719099648",
+      "telefono": "0979283932",
+      "correo": "daniel@mail.com",
+      "localidad": "palco",
+      "numAsientos": 1
     }
   ]
 }

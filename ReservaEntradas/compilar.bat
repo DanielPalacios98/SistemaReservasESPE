@@ -10,7 +10,7 @@ taskkill /f /im ReservaEntradas.exe >nul 2>&1
 
 echo Compilando ejecutable...
 
-g++ main.cpp lib\Reserva.cpp lib\NodoReserva.cpp lib\ListaReserva.cpp lib\mvc\ConsoleView.cpp lib\mvc\Controller.cpp -Ilib\include -o bin\Debug\ReservaEntradas.exe
+g++ main.cpp lib\Reserva.cpp lib\NodoReserva.cpp lib\ListaReserva.cpp lib\JsonReservaRepository.cpp lib\MongoReservaRepository.cpp lib\Config.cpp lib\mvc\ConsoleView.cpp lib\mvc\Controller.cpp -Ilib\include -o bin\Debug\ReservaEntradas.exe
 
 if errorlevel 1 (
     echo.

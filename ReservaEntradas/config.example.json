@@ -1,0 +1,6 @@
+{
+  "backend": "mongo",
+  "mongoUri": "mongodb+srv://USUARIO:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority",
+  "mongoDb": "Proyecto",
+  "mongoCollection": "ReservaEntradas"
+}
