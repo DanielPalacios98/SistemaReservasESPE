@@ -1,6 +1,6 @@
 #include "ReservaDialog.h"
 #include "App.h" // Para acceder a ListaReserva y validar cupos
-#include "../lib/include/Reserva.h"
+#include "Reserva.h"
 
 enum {
     ID_Save = 1001,
@@ -130,6 +130,27 @@ void ReservaDialog::OnValCedula(wxCommandEvent& event) {
     // Validacion de negocio: Maximo 5 boletos por usuario (Suma total de asientos)
     MyApp* app = (MyApp*)wxApp::GetInstance();
     
+    // Autocompletado desde HashTableUsuarios
+    if (app->getUsuarios()) {
+        const Usuario* u = app->getUsuarios()->obtener(val.ToStdString());
+        if (u) {
+            wxMessageBox("Usuario encontrado. Se autocompletan los datos.", "Autocompletado");
+            txtNombres->SetValue(u->getNombres());
+            txtTelefono->SetValue(u->getTelefono());
+            txtCorreo->SetValue(u->getCorreo());
+
+            // Simulamos flujo de validacion exitosa para saltar pasos
+            txtNombres->Disable();
+            btnValNombres->Disable(); // Asumimos nombre validado si viene de hash
+
+            // Telefono y correo se validaran en sus pasos, pero ya estan rellenos
+            // Habilitamos Telefono para que el usuario confirme o siga
+            txtTelefono->Enable(true); 
+            btnValTelefono->Enable(true);
+            // Podriamos saltar todo, pero mantenemos el flujo para seguridad
+        }
+    }
+
     // Intentamos consultar directo al repositorio (BD) primero
     int actuales = app->getRepository()->contarAsientos(val.ToStdString());
     

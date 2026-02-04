@@ -1,6 +1,6 @@
-#include "include/MongoReservaRepository.h"
-#include "include/ListaReserva.h"
-#include "include/Reserva.h"
+#include "MongoReservaRepository.h"
+#include "ListaReserva.h"
+#include "Reserva.h"
 #include <iostream>
 #include <fstream>
 #include <ctime>
@@ -39,18 +39,18 @@ static string jsonEscapeLocal(const string& s) {
 
 bool MongoReservaRepository::cargar(ListaReserva& lista) {
 #ifndef USE_MONGO
-    cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << endl;
+    std::cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
     return false; // Forzamos fallback en Controller
 #else
     try {
-        cout << "[Mongo] Conectando con MongoDB..." << endl;
+        std::cout << "[Mongo] Conectando con MongoDB..." << std::endl;
         mongocxx::client client{mongocxx::uri{uri}};
         // Ping para confirmar la conexión
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
         auto pingResult = client[db].run_command(document{} << "ping" << 1 << finalize);
         (void)pingResult; // No usamos el resultado, sólo confirmación
-        cout << "[Mongo] Conexión exitosa al cluster y base '" << db << "'." << endl;
+        std::cout << "[Mongo] Conexión exitosa al cluster y base '" << db << "'." << std::endl;
 
         auto coll = client[db][collection];
 
@@ -98,7 +98,7 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
         }
         out << "\n  ]\n}";
         out.close();
-        cout << "[Mongo] Exportadas " << exportadas << " reservas desde " << db << "/" << collection << endl;
+        std::cout << "[Mongo] Exportadas " << exportadas << " reservas desde " << db << "/" << collection << std::endl;
 
         // Cargar en memoria desde el JSON recién exportado
         lista.clear();
@@ -107,7 +107,7 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
         try { std::remove(tmpFile.c_str()); } catch(...) {}
         return true; // Retornamos true indicando que la conexión y sync fueron exitosas (aunque esté vacía)
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error al cargar / conectar: " << e.what() << endl;
+        std::cerr << "[Mongo] Error al cargar / conectar: " << e.what() << std::endl;
         return false;
     }
 #endif
@@ -115,7 +115,7 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
 
 bool MongoReservaRepository::guardar(const ListaReserva& lista) {
 #ifndef USE_MONGO
-    cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << endl;
+    std::cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
     return false; // Forzamos fallback en Controller
 #else
     try {
@@ -148,10 +148,10 @@ bool MongoReservaRepository::guardar(const ListaReserva& lista) {
             ++insertadas;
             tmp = tmp->next;
         } while (tmp != head);
-        cout << "[Mongo] Insertadas " << insertadas << " reservas en '" << db << "'.'" << collection << "'" << endl;
+        std::cout << "[Mongo] Insertadas " << insertadas << " reservas en '" << db << "'.'" << collection << "'" << std::endl;
         return true;
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error al guardar: " << e.what() << endl;
+        std::cerr << "[Mongo] Error al guardar: " << e.what() << std::endl;
         // Log to file for debug
         ofstream log("mongo_error_guardar.txt");
         log << e.what() << endl;
@@ -185,7 +185,7 @@ int MongoReservaRepository::generarId() {
             return result->view()["seq"].get_int32().value; 
         }
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error generarID: " << e.what() << endl;
+        std::cerr << "[Mongo] Error generarID: " << e.what() << std::endl;
     }
 #endif
     return -1; // Fallo
@@ -212,7 +212,7 @@ bool MongoReservaRepository::crear(const Reserva& r) {
         coll.insert_one(doc << finalize);
         return true;
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error al crear reserva: " << e.what() << endl;
+        std::cerr << "[Mongo] Error al crear reserva: " << e.what() << std::endl;
         return false;
     }
 #else
@@ -233,7 +233,7 @@ bool MongoReservaRepository::eliminar(int id) {
         if (result && result->deleted_count() > 0) return true;
         return false;
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error al eliminar: " << e.what() << endl;
+        std::cerr << "[Mongo] Error al eliminar: " << e.what() << std::endl;
         return false;
     }
 #else
@@ -265,7 +265,7 @@ int MongoReservaRepository::contarAsientos(const string& cedula) {
         }
         return 0; // Si no hay docs, es 0
     } catch (const std::exception& e) {
-        cerr << "[Mongo] Error contarAsientos: " << e.what() << endl;
+        std::cerr << "[Mongo] Error contarAsientos: " << e.what() << std::endl;
         return 0; // Fallback seguro
     }
 #else

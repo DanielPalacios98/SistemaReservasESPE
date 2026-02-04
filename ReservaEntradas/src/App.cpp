@@ -3,7 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-#include "../lib/include/Log.h"
+#include "Log.h"
 
 wxIMPLEMENT_APP(MyApp);
 
@@ -37,7 +37,7 @@ bool MyApp::OnInit() {
             log << "Mongo cargar: FAIL\n";
             log << "Error: " << err.ToStdString() << "\n";
             Log::error(std::string("Mongo cargar FAIL: ") + err.ToStdString());
-            wxMessageBox("Fallo conexion a MongoDB.\n\n" + err + "\n\nEl sistema cargara los datos LOCALES (reservas.txt).", "Modo Offline Activo", wxICON_WARNING);
+            wxMessageBox("Fallo conexion a MongoDB.\n\n" + err + "\n\nEl sistema cargara los datos LOCALES (reservas.json).", "Modo Offline Activo", wxICON_WARNING);
             
             delete repo;
             repo = new JsonReservaRepository();
@@ -54,6 +54,28 @@ bool MyApp::OnInit() {
         log << "Backend JSON local activo\n";
         Log::info("Backend JSON local activo");
     }
+
+    // Inicializar HashTable de usuarios y poblarla con datos históricos
+    usuarios = new HashTableUsuarios(251); 
+    
+    int n = 0;
+    Reserva** arrInit = lista.getReservasArray(n);
+    if (arrInit) {
+        for(int i=0; i<n; i++) {
+            Reserva* r = arrInit[i];
+            if (!usuarios->existe(r->getCedula())) {
+                Usuario u(r->getCedula(), r->getNombres(), r->getTelefono(), r->getCorreo());
+                usuarios->insertar(u);
+            }
+        }
+        delete[] arrInit; // Limpieza importante
+    }
+
+    Log::info("HashUsuarios inicializado con " + std::to_string(n) + " registros historicos scanneados.");
+
+    // Construir BST inicial
+    lista.construirBST(bst);
+    Log::info("BST inicial construido.");
 
     MainFrame* frame = new MainFrame("Sistema de Reservas ESPE (GUI)", wxPoint(50, 50), wxSize(1000, 700));
     
@@ -78,6 +100,10 @@ bool MyApp::OnInit() {
 }
 
 int MyApp::OnExit() {
+    if (usuarios) {
+        delete usuarios;
+        usuarios = nullptr;
+    }
     if (repo) {
         // Guardar al salir
         repo->guardar(lista);
