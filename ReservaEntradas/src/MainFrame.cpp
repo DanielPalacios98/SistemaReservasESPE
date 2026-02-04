@@ -1,9 +1,13 @@
 #include "MainFrame.h"
 #include "App.h"
 #include "ReservaDialog.h"
-#include "../lib/include/Reserva.h"
-#include "../lib/include/Log.h"
+#include "Reserva.h"
+#include "Log.h"
 #include <wx/busyinfo.h>
+// Eliminado <algorithm>, usamos sort manual en MainFrameExtensions.cpp
+
+// Forward declaration de funcion manual
+void bubbleSortManual(Reserva** arr, int n, bool (*debeIntercambiar)(Reserva*, Reserva*));
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_MENU(ID_Hello,   MainFrame::OnHello)
@@ -12,6 +16,13 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_BUTTON(ID_Refresh, MainFrame::OnRefresh)
     EVT_BUTTON(ID_Add, MainFrame::OnAdd)
     EVT_BUTTON(ID_Delete, MainFrame::OnDelete)
+    EVT_TIMER(ID_Timer, MainFrame::OnTimer)
+    EVT_BUTTON(ID_SortName, MainFrame::OnSortName)
+    EVT_BUTTON(ID_SortCedula, MainFrame::OnSortCedula)
+    EVT_BUTTON(ID_SortId, MainFrame::OnSortId)
+    EVT_BUTTON(ID_ShellSort, MainFrame::OnShellSort)
+    EVT_BUTTON(ID_SearchBST, MainFrame::OnSearchBST)
+    EVT_BUTTON(ID_SearchLin, MainFrame::OnSearchLinear)
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
@@ -21,13 +32,23 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
     wxMenu *menuFile = new wxMenu;
     menuFile->Append(ID_Hello, "&Hola...\tCtrl-H", "Saludo de prueba");
     menuFile->AppendSeparator();
-    menuFile->Append(wxID_EXIT);
+    menuFile->Append(wxID_EXIT, "Salir");
+
+    wxMenu *menuTools = new wxMenu;
+    menuTools->Append(ID_SortId, "Ordenar por &ID (Default)");
+    menuTools->Append(ID_SortName, "Ordenar por &Nombre");
+    menuTools->Append(ID_SortCedula, "Ordenar por &Cedula");
+    menuTools->AppendSeparator();
+    menuTools->Append(ID_ShellSort, "Shell Sort (&Nombres)");
+    menuTools->Append(ID_SearchBST, "&Buscar por ID (BST)");
+    menuTools->Append(ID_SearchLin, "&Buscar por ID (Lineal/Exhaustivo)");
 
     wxMenu *menuHelp = new wxMenu;
     menuHelp->Append(wxID_ABOUT);
 
     wxMenuBar *menuBar = new wxMenuBar;
     menuBar->Append(menuFile, "&Archivo");
+    menuBar->Append(menuTools, "&Herramientas");
     menuBar->Append(menuHelp, "&Ayuda");
     SetMenuBar(menuBar);
 
@@ -36,13 +57,28 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
 
     // Toolbar de botones
     wxBoxSizer* btnSizer = new wxBoxSizer(wxHORIZONTAL);
-    wxButton* btnAdd = new wxButton(this, ID_Add, "Nueva Reserva");
-    wxButton* btnDel = new wxButton(this, ID_Delete, "Eliminar Seleccion");
-    wxButton* btnRef = new wxButton(this, ID_Refresh, "Recargar");
+    wxButton* btnAdd = new wxButton(this, ID_Add, "Nueva Data");
+    wxButton* btnDel = new wxButton(this, ID_Delete, "Borrar");
+    wxButton* btnRef = new wxButton(this, ID_Refresh, "Refrescar");
     
-    btnSizer->Add(btnAdd, 0, wxALL, 5);
-    btnSizer->Add(btnDel, 0, wxALL, 5);
-    btnSizer->Add(btnRef, 0, wxALL, 5);
+    // Botones adicionales solicitados
+    wxButton* btnSearch = new wxButton(this, ID_SearchBST, "Buscar (BST)");
+    wxButton* btnSearchLin = new wxButton(this, ID_SearchLin, "Buscar (Lin)");
+    wxButton* btnSortId = new wxButton(this, ID_SortId, "Ord. ID");
+    wxButton* btnSortN = new wxButton(this, ID_SortName, "Ord. Nombre");
+    wxButton* btnSortC = new wxButton(this, ID_SortCedula, "Ord. Cedula");
+    wxButton* btnShell = new wxButton(this, ID_ShellSort, "ShellSort");
+
+    btnSizer->Add(btnAdd, 0, wxALL, 2);
+    btnSizer->Add(btnDel, 0, wxALL, 2);
+    btnSizer->Add(btnRef, 0, wxALL, 2);
+    btnSizer->AddSpacer(5);
+    btnSizer->Add(btnSearch, 0, wxALL, 2);
+    btnSizer->Add(btnSearchLin, 0, wxALL, 2);
+    btnSizer->Add(btnSortId, 0, wxALL, 2);
+    btnSizer->Add(btnSortN, 0, wxALL, 2);
+    btnSizer->Add(btnSortC, 0, wxALL, 2);
+    btnSizer->Add(btnShell, 0, wxALL, 2);
     
     mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 5);
 
@@ -63,7 +99,9 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
 
     RefreshList();
 
-    // Auto-sincronización removida: sincroniza solo al presionar Recargar
+    // Auto-sincronización activada
+    refreshTimer = new wxTimer(this, ID_Timer);
+    refreshTimer->Start(3000); // 3 segundos
 }
 
 void MainFrame::OnExit(wxCommandEvent& event)
@@ -83,14 +121,49 @@ void MainFrame::OnHello(wxCommandEvent& event)
 }
 
 void MainFrame::OnRefresh(wxCommandEvent& event) {
-    // Recargar desde el repositorio (BD o local) y refrescar vista
+    LoadData(false);
+}
+
+void MainFrame::OnTimer(wxTimerEvent& event) {
+    LoadData(true);
+}
+
+void MainFrame::LoadData(bool silent) {
     MyApp* app = (MyApp*)wxApp::GetInstance();
     IReservaRepository* repo = app->getRepository();
-    SetStatusText("Sincronizando con repositorio...");
-    wxBusyCursor busy;
-    repo->cargar(app->getLista());
-    RefreshList();
-    SetStatusText("Lista actualizada desde repositorio");
+    
+    if (!silent) {
+        SetStatusText("Sincronizando con repositorio...");
+        wxBusyCursor busy;
+        repo->cargar(app->getLista());
+        RefreshList();
+        SetStatusText("Lista actualizada desde repositorio");
+    } else {
+        // En modo silencioso (timer), cargamos sin cursor de espera
+        repo->cargar(app->getLista());
+        
+        // Guardar selección
+        long item = listView->GetFirstSelected();
+        long selectedId = -1;
+        if (item != -1) {
+             wxString textId = listView->GetItemText(item, 0); 
+             textId.ToLong(&selectedId);
+        }
+
+        RefreshList();
+
+        // Restaurar selección
+        if (selectedId != -1) {
+             long count = listView->GetItemCount();
+             for(long i=0; i<count; i++) {
+                 long idVal;
+                 if (listView->GetItemText(i, 0).ToLong(&idVal) && idVal == selectedId) {
+                     listView->SetItemState(i, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+                     break;
+                 }
+             }
+        }
+    }
 }
 
 void MainFrame::OnAdd(wxCommandEvent& event) {
@@ -133,6 +206,7 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
                 
                 // 4. Refrescar lista completa (descarga lo nuevo de todos los usuarios)
                 repo->cargar(app->getLista());
+                app->getLista().construirBST(app->getBST()); // Reconstruimos BST con data fresca
                 RefreshList();
                 SetStatusText("Sincronizado.");
             } else {
@@ -145,6 +219,15 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
             Reserva* nueva = app->getLista().agregarReserva(nombres, cedula, telefono, correo, localidad, asientos);
             if (nueva) {
                 Log::info("Reserva local creada");
+                
+                // Actualizar BST
+                app->getBST().insertar(nueva);
+                // Actualizar HashUsuarios
+                if (app->getUsuarios() && !app->getUsuarios()->existe(cedula)) {
+                     Usuario u(cedula, nombres, telefono, correo);
+                     app->getUsuarios()->insertar(u);
+                }
+                
                 // Guardar en repositorio (sobrescribe archivo JSON)
                 if (repo->guardar(app->getLista())) {
                     wxMessageBox("Reserva guardada localmente.", "Info");
@@ -175,6 +258,10 @@ void MainFrame::OnDelete(wxCommandEvent& event) {
     if (textId.ToLong(&idVal)) {
         MyApp* app = (MyApp*)wxApp::GetInstance();
         if (app->getLista().eliminarPorID((int)idVal)) {
+            // Reconstruccion del Arbol BST (Requerimiento explícito)
+            app->getBST().clear();
+            app->getLista().construirBST(app->getBST());
+            
             // Guardar cambios en repo
             app->getRepository()->guardar(app->getLista());
             RefreshList();
@@ -186,25 +273,35 @@ void MainFrame::OnDelete(wxCommandEvent& event) {
 }
 
 void MainFrame::RefreshList() {
-    listView->DeleteAllItems();
     MyApp* app = (MyApp*)wxApp::GetInstance();
-    ListaReserva& lista = app->getLista();
+    int n = 0;
     
-    NodoReserva* head = lista.obtenerHead();
-    if (!head) return;
+    // Obtener arreglo dinamico fresco
+    Reserva** arr = app->getLista().getReservasArray(n);
+    if (!arr) {
+         listView->DeleteAllItems();
+         return;
+    }
 
-    NodoReserva* temp = head;
-    do {
-        Reserva* r = temp->reserva;
-        // Insertar item
-        long index = listView->GetItemCount();
-        listView->InsertItem(index, wxString::Format("%d", r->getIdReserva()));
-        listView->SetItem(index, 1, wxString::FromUTF8(r->getNombres().c_str()));
-        listView->SetItem(index, 2, r->getCedula());
-        listView->SetItem(index, 3, r->getTelefono());
-        listView->SetItem(index, 4, r->getLocalidad());
-        listView->SetItem(index, 5, wxString::Format("%d", r->getNumAsientos()));
-        
-        temp = temp->next;
-    } while (temp != head);
+    // Aplicar orden activo
+    if (currentSortMode == SORT_NAME) {
+         // Sort Manual (Bubble)
+         bubbleSortManual(arr, n, [](Reserva* a, Reserva* b) {
+             return a->getNombres() > b->getNombres(); // > para Ascendente en Bubble
+         });
+    }
+    else if (currentSortMode == SORT_CEDULA) {
+         bubbleSortManual(arr, n, [](Reserva* a, Reserva* b) {
+             return a->getCedula() > b->getCedula();
+         });
+    }
+    else {
+         // SORT_ID (Default)
+         bubbleSortManual(arr, n, [](Reserva* a, Reserva* b) {
+             return a->getIdReserva() > b->getIdReserva();
+         });
+    }
+
+    UpdateListFromArray(arr, n);
+    delete[] arr; // Siempre liberar
 }

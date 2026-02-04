@@ -49,7 +49,7 @@ if (Test-Path $DllSrcDir) {
 }
 
 # 5. Copy extra Resources if they exist
-$Resources = @("reservas.txt", "input.txt", ".env", "config.json")
+$Resources = @("reservas.json", "reservas.txt", "input.txt", ".env", "config.json")
 foreach ($res in $Resources) {
     $resPath = Join-Path $ProjectRoot $res
     if (Test-Path $resPath) {

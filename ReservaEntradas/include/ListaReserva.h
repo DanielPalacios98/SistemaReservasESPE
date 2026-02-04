@@ -63,4 +63,8 @@ public:
 
     // Export en formato JSON Lines (una reserva por línea)
     void guardarEnJsonLines(const string& filename) const;
+
+    // Métodos para REQUERIMIENTOS NUEVOS (Memoria Dinámica)
+    Reserva** getReservasArray(int& n); // Retorna arreglo dinámico de punteros
+    static string shellSortChars(string nombre);   // Shell Sort de caracteres
 };
