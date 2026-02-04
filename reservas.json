@@ -1,4 +1,13 @@
 {
   "reservas": [
+    {
+      "idReserva": 1001,
+      "nombres": "Pablo Palacios",
+      "cedula": "1719099630",
+      "telefono": "0979283932",
+      "correo": "daniel@mail.com",
+      "localidad": "general",
+      "numAsientos": 3
+    }
   ]
 }

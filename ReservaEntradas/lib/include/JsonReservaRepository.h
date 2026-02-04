@@ -22,4 +22,8 @@ public:
     bool crear(const Reserva& r) override;
     bool eliminar(int id) override;
     int contarAsientos(const string& cedula) override;
+    
+    // En modo local, los locks son stubs que siempre devuelven true (no multiusuario)
+    bool validarYBloquearCedula(const string& cedula) override { return true; }
+    bool desbloquearCedula(const string& cedula) override { return true; }
 };

@@ -16,12 +16,14 @@ public:
 
 private:
     void OnSave(wxCommandEvent& event);
+    void OnClose(wxCloseEvent& event);
     
     // Validadores individuales
     void OnValNombre(wxCommandEvent& event);
     void OnValCedula(wxCommandEvent& event);
     void OnValTelefono(wxCommandEvent& event);
     void OnValCorreo(wxCommandEvent& event);
+    void OnValAsientos(wxCommandEvent& event);
 
     wxTextCtrl* txtNombres;
     wxButton* btnValNombres;
@@ -37,10 +39,14 @@ private:
 
     wxComboBox* cmbLocalidad;
     wxSpinCtrl* spinAsientos;
+    wxButton* btnValAsientos;
     wxButton* btnSave;
 
     // Control de cupo
     int cupoDisponibleUsuario = 5;
+    
+    // Control de bloqueo de cédula
+    wxString cedulaBloqueada; // Almacena la cédula bloqueada para desbloquearla si se cancela
 
     wxDECLARE_EVENT_TABLE();
 };

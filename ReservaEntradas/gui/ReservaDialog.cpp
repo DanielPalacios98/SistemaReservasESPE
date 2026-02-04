@@ -7,7 +7,8 @@ enum {
     ID_ValNom = 2001,
     ID_ValCed = 2002,
     ID_ValTel = 2003,
-    ID_ValCor = 2004
+    ID_ValCor = 2004,
+    ID_ValAsientos = 2005
 };
 
 wxBEGIN_EVENT_TABLE(ReservaDialog, wxDialog)
@@ -16,6 +17,8 @@ wxBEGIN_EVENT_TABLE(ReservaDialog, wxDialog)
     EVT_BUTTON(ID_ValCed, ReservaDialog::OnValCedula)
     EVT_BUTTON(ID_ValTel, ReservaDialog::OnValTelefono)
     EVT_BUTTON(ID_ValCor, ReservaDialog::OnValCorreo)
+    EVT_BUTTON(ID_ValAsientos, ReservaDialog::OnValAsientos)
+    EVT_CLOSE(ReservaDialog::OnClose)
 wxEND_EVENT_TABLE()
 
 ReservaDialog::ReservaDialog(wxWindow* parent)
@@ -82,7 +85,9 @@ ReservaDialog::ReservaDialog(wxWindow* parent)
     spinAsientos->SetValue(1);
     spinAsientos->Enable(false);
     formSizer->Add(spinAsientos, 1, wxEXPAND);
-    formSizer->Add(new wxStaticText(this, wxID_ANY, ""), 0); // Spacer
+    btnValAsientos = new wxButton(this, ID_ValAsientos, "Validar");
+    btnValAsientos->Enable(false);
+    formSizer->Add(btnValAsientos, 0);
 
     mainSizer->Add(formSizer, 1, wxEXPAND | wxALL, 20);
 
@@ -127,26 +132,25 @@ void ReservaDialog::OnValCedula(wxCommandEvent& event) {
         return;
     }
 
-    // Validacion de negocio: Maximo 5 boletos por usuario (Suma total de asientos)
+    // Validacion de negocio: Intentar bloquear la cedula en la BD (transaccional)
     MyApp* app = (MyApp*)wxApp::GetInstance();
+    IReservaRepository* repo = app->getRepository();
     
-    // Intentamos consultar directo al repositorio (BD) primero
-    int actuales = app->getRepository()->contarAsientos(val.ToStdString());
-    
-    // Si devuelve -1 (es JSON local o error), usamos la lista cargada en memoria
-    if (actuales == -1) {
-        actuales = app->getLista().contarAsientosPorCedula(val.ToStdString()); 
-    }
-    
-    if (actuales >= 5) {
-        wxMessageBox(wxString::Format("Error: Este usuario ya tiene %d boletos reservados (verificado en BD). El maximo es 5.", actuales), "Limite Alcanzado");
-        // No permitimos avanzar
+    // validarYBloquearCedula() valida cupo AND coloca un lock temporal de 30 segundos
+    if (!repo->validarYBloquearCedula(val.ToStdString())) {
+        wxMessageBox("Error: La cedula no puede registrarse.\n"
+                     "Razon: Ya tiene maximo de asientos (5) O esta siendo utilizada en otro dispositivo.\n"
+                     "Intente en unos segundos.", "Validacion");
+        txtCedula->SetFocus();
         return; 
     }
 
-    // Calculamos cuantos puede comprar ahora
-    cupoDisponibleUsuario = 5 - actuales;
-    wxMessageBox(wxString::Format("Validacion correcta. El usuario tiene %d boletos previos.\nPuede comprar hasta %d mas.", actuales, cupoDisponibleUsuario), "Info");
+    // Lock exitoso, almacenar cédula para desbloquear si se cancela
+    cedulaBloqueada = val;
+    
+    wxMessageBox("Cedula validada y bloqueada temporalmente en la nube.\n"
+                 "Puede continuar con el registro. Si cancela, el bloqueo se liberara automaticamente.",
+                 "Info");
 
     // Exito paso 2
     txtCedula->Disable();
@@ -179,46 +183,90 @@ void ReservaDialog::OnValCorreo(wxCommandEvent& event) {
         wxMessageBox("Error: Formato de correo invalido. Use ejemplo@dominio.com", "Validacion");
         txtCorreo->SetFocus();
     } else {
-        // Exito paso 4 -> Habilitar selecci�n final
+        // Exito paso 4 -> Habilitar seleccion final
         txtCorreo->Disable();
         btnValCorreo->Disable();
         
         cmbLocalidad->Enable(true);
-        
-        // Configuramos el spinner segun el cupo restante
         spinAsientos->Enable(true);
-        if (cupoDisponibleUsuario > 0) {
-            spinAsientos->SetRange(1, cupoDisponibleUsuario);
-            spinAsientos->SetValue(1);
-        } else {
-             // Caso hipotetico, no deberia llegar aqui por la validacion de cedula
-             spinAsientos->Enable(false);
-        }
-
-        btnSave->Enable(true); // Ya puede guardar
-        btnSave->SetFocus();
+        btnValAsientos->Enable(true);
+        
+        spinAsientos->SetFocus();
+        wxMessageBox("Ahora seleccione localidad y asientos, luego presione 'Validar' para verificar disponibilidad en tiempo real.", "Info");
     }
 }
 
-void ReservaDialog::OnSave(wxCommandEvent& event) {
-    // Validacion final de cupos (negocio)
-    // Si bien paso las validaciones de formato, falta ver si al sumar los asientos nuevos se pasa del limite
+void ReservaDialog::OnValAsientos(wxCommandEvent& event) {
     MyApp* app = (MyApp*)wxApp::GetInstance();
-    // La verificacion de cupos por localidad la hace agregarReserva internamente y retorna nullptr si falla.
+    IReservaRepository* repo = app->getRepository();
+    wxString cedula = txtCedula->GetValue();
+    int asientosSeleccionados = spinAsientos->GetValue();
     
-    // Preventivo: si el valor ingresado excede el cupo permitido, avisar y ajustar
-    int seleccionados = spinAsientos->GetValue();
-    if (seleccionados > cupoDisponibleUsuario) {
-        wxMessageBox(wxString::Format(
-            "Atencion: ha ingresado %d asientos, excede el maximo permitido (%d).\nSe ajusto automaticamente al valor permitido.",
-            seleccionados, cupoDisponibleUsuario),
-            "Validacion", wxOK | wxICON_INFORMATION);
-        spinAsientos->SetValue(cupoDisponibleUsuario);
-        spinAsientos->SetFocus();
-        return; // mantener el dialogo abierto para que el usuario confirme
+    // PASO 1: Verificar si la cedula sigue bloqueada (que nadie mas la este usando)
+    // Intentar bloquear de nuevo para asegurar exclusividad
+    if (!repo->validarYBloquearCedula(cedula.ToStdString())) {
+        wxMessageBox("ERROR: Esta cedula esta siendo utilizada en este momento por otro usuario/PC.\n\n"
+                     "Otra persona esta registrando una reserva con esta misma cedula.\n"
+                     "Espere unos segundos e intente nuevamente.",
+                     "Cedula en Uso", wxOK | wxICON_ERROR);
+        return;
     }
+    
+    // PASO 2: VALIDACION EN TIEMPO REAL: Consultar BD inmediatamente
+    int actualesEnBD = repo->contarAsientos(cedula.ToStdString());
+    
+    if (actualesEnBD == -1) {
+        // Modo local, usar lista en memoria
+        actualesEnBD = app->getLista().contarAsientosPorCedula(cedula.ToStdString());
+    }
+    
+    int totalDespuesDeGuardar = actualesEnBD + asientosSeleccionados;
+    
+    if (totalDespuesDeGuardar > 5) {
+        // Desbloquear antes de rechazar
+        repo->desbloquearCedula(cedula.ToStdString());
+        cedulaBloqueada = ""; // Limpiar para que OnClose no intente desbloquear
+        
+        wxMessageBox(wxString::Format(
+            "ERROR: Esta cedula actualmente tiene %d asientos registrados en la base de datos.\n"
+            "Si guarda %d asientos mas, superaria el limite de 5 asientos.\n\n"
+            "Posiblemente otro usuario registro mas asientos mientras usted llenaba el formulario.\n"
+            "Cierre este formulario y presione 'Recargar' para sincronizar.",
+            actualesEnBD, asientosSeleccionados),
+            "Cupo Insuficiente", wxOK | wxICON_ERROR);
+        
+        // Sugerir cupo disponible
+        int disponible = 5 - actualesEnBD;
+        if (disponible > 0) {
+            wxMessageBox(wxString::Format("Esta cedula solo puede registrar %d asiento(s) mas.", disponible), "Info");
+        } else {
+            wxMessageBox("Esta cedula ya alcanzo el limite maximo de 5 asientos.", "Limite Alcanzado");
+        }
+        return;
+    }
+    
+    // TODO BIEN: Actualizar bloqueo y habilitar guardar
+    cedulaBloqueada = cedula; // Actualizar para mantener el bloqueo
+    
+    wxMessageBox(wxString::Format(
+        "Validacion exitosa y cedula bloqueada.\n\n"
+        "Asientos actuales en BD: %d\n"
+        "Asientos a registrar: %d\n"
+        "Total despues de guardar: %d/5\n\n"
+        "Presione 'Guardar Reserva' AHORA para completar.\n"
+        "Si demora, el bloqueo expirara en 30 segundos.",
+        actualesEnBD, asientosSeleccionados, totalDespuesDeGuardar),
+        "Cupo Confirmado", wxOK | wxICON_INFORMATION);
+    
+    btnValAsientos->Disable();
+    spinAsientos->Disable();
+    cmbLocalidad->Disable();
+    btnSave->Enable(true);
+    btnSave->SetFocus();
+}
 
-    // Todo listo
+void ReservaDialog::OnSave(wxCommandEvent& event) {
+    // La validación ya se hizo en OnValAsientos, solo cerrar el diálogo
     EndModal(wxID_OK);
 }
 
@@ -228,3 +276,11 @@ wxString ReservaDialog::getTelefono() const { return txtTelefono->GetValue(); }
 wxString ReservaDialog::getCorreo() const { return txtCorreo->GetValue(); }
 wxString ReservaDialog::getLocalidad() const { return cmbLocalidad->GetValue(); }
 int ReservaDialog::getAsientos() const { return spinAsientos->GetValue(); }
+void ReservaDialog::OnClose(wxCloseEvent& event) {
+    // Si se cierra el dialogo sin guardar, desbloquear la cedula
+    if (!cedulaBloqueada.IsEmpty()) {
+        MyApp* app = (MyApp*)wxApp::GetInstance();
+        app->getRepository()->desbloquearCedula(cedulaBloqueada.ToStdString());
+    }
+    event.Skip(); // Permitir que se cierre normalmente
+}

@@ -22,4 +22,8 @@ public:
     bool crear(const Reserva& r) override;
     bool eliminar(int id) override;
     int contarAsientos(const string& cedula) override;
+    
+    // Bloqueo de cédula con TTL
+    bool validarYBloquearCedula(const string& cedula) override;
+    bool desbloquearCedula(const string& cedula) override;
 };

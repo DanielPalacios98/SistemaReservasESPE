@@ -97,7 +97,7 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
     ReservaDialog dlg(this);
     if (dlg.ShowModal() == wxID_OK) {
         Log::info("Dialog OK: creando reserva");
-        // Recuperar datos validados
+        // Recuperar datos validados (la cédula fue bloqueada en ReservaDialog::OnValCedula)
         std::string nombres = dlg.getNombres().ToStdString();
         std::string cedula = dlg.getCedula().ToStdString();
         std::string telefono = dlg.getTelefono().ToStdString();
@@ -109,8 +109,7 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
         MyApp* app = (MyApp*)wxApp::GetInstance();
         IReservaRepository* repo = app->getRepository();
 
-        // Verificamos si el repositorio soporta operaciones atómicas (Nube)
-        // Usamos contarAsientos como proxy: si devuelve -1 es local, si >= 0 es cloud.
+        // Detectar modo nube/local
         bool modoNube = (repo->contarAsientos(cedula) != -1);
 
         if (modoNube) {
@@ -119,17 +118,21 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
             // 1. Generar ID único atómico
             int newId = repo->generarId();
             if (newId <= 0) {
-                 wxMessageBox("Error: No se pudo generar un ID único en la base de datos.", "Error Crítico");
+                 wxMessageBox("Error: No se pudo generar un ID unico en la base de datos.", "Error Critico");
+                 // Desbloquear antes de retornar
+                 repo->desbloquearCedula(cedula);
                  return;
             }
 
-            // 2. Crear objeto temporal
+            // 2. Crear objeto temporal (cédula ya está bloqueada)
             Reserva r(newId, nombres, cedula, telefono, correo, localidad, asientos);
             
-            // 3. Insertar directo en la nube
+            // 3. Insertar directo en la nube (confiar en el lock)
             if (repo->crear(r)) {
                 Log::info(std::string("Reserva creada id=") + std::to_string(newId));
-                wxMessageBox(wxString::Format("Reserva #%d guardada exitosamente en la nube.", newId), "Éxito");
+                // ÉXITO: Desbloquear después de guardar
+                repo->desbloquearCedula(cedula);
+                wxMessageBox(wxString::Format("Reserva #%d guardada exitosamente en la nube.", newId), "Exito");
                 
                 // 4. Refrescar lista completa (descarga lo nuevo de todos los usuarios)
                 repo->cargar(app->getLista());
@@ -137,7 +140,10 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
                 SetStatusText("Sincronizado.");
             } else {
                 Log::error("Fallo al crear reserva en la nube");
-                wxMessageBox("Error al guardar en la base de datos remota.", "Error");
+                // FALLO: Desbloquear para que el usuario reintente
+                repo->desbloquearCedula(cedula);
+                wxMessageBox("No se pudo guardar la reserva. El cupo puede haber sido ocupado.\n"
+                            "Se libero el bloqueo. Intente nuevamente en unos segundos.", "Error");
             }
         } 
         else {
@@ -147,6 +153,7 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
                 Log::info("Reserva local creada");
                 // Guardar en repositorio (sobrescribe archivo JSON)
                 if (repo->guardar(app->getLista())) {
+                    // En modo local no hay desbloqueo (repos->desbloquearCedula es stub)
                     wxMessageBox("Reserva guardada localmente.", "Info");
                 } else {
                     Log::error("Fallo al guardar reserva local");
@@ -155,9 +162,12 @@ void MainFrame::OnAdd(wxCommandEvent& event) {
                 RefreshList();
             } else {
                 Log::error("No se pudo crear reserva (validacion negocio)");
-                wxMessageBox("No se pudo crear la reserva (Cupo lleno o límite local).", "Error");
+                wxMessageBox("No se pudo crear la reserva (Cupo lleno o limite local).", "Error");
             }
         }
+    } else {
+        // CANCELADO: El OnClose del dialog ya desbloquea la cédula
+        Log::info("Dialog cancelado");
     }
 }
 

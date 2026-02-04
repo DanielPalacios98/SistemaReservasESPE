@@ -14,6 +14,8 @@ using namespace std;
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
+#include <mongocxx/options/update.hpp>
+#include <mongocxx/exception/exception.hpp>
 #include <bsoncxx/types.hpp>
 
 // Instancia global única de mongocxx
@@ -206,10 +208,40 @@ bool MongoReservaRepository::crear(const Reserva& r) {
     try {
         mongocxx::client client{mongocxx::uri{uri}};
         auto coll = client.database(db).collection(collection);
-        
+        auto totalsColl = client.database(db).collection("cedula_totales");
+
+        if (r.getNumAsientos() > 5) return false;
+
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
+        using bsoncxx::builder::stream::open_document;
+        using bsoncxx::builder::stream::close_document;
 
+        // CONFIAR EN EL LOCK: La cédula ya fue bloqueada en validarYBloquearCedula()
+        // Solo actualizar total y insertar la reserva (sin revalidación de cupo)
+        
+        // 1) Incrementar contador de asientos por cédula
+        auto updateResult = totalsColl.update_one(
+            document{} << "_id" << r.getCedula() << finalize,
+            document{} << "$inc" << open_document << "total" << r.getNumAsientos() << close_document << finalize
+        );
+
+        // Si la cédula no existe en cedula_totales (nunca se bloqueó), algo está mal
+        // Insertar nuevo documento de totales como fallback
+        if (updateResult && updateResult->matched_count() == 0) {
+            try {
+                document docTot;
+                docTot << "_id" << r.getCedula()
+                       << "cedula" << r.getCedula()
+                       << "total" << r.getNumAsientos();
+                totalsColl.insert_one(docTot << finalize);
+            } catch (const mongocxx::exception& e) {
+                // Si hay error de clave duplicada, alguien más lo insertó; ignorar
+                if (e.code().value() != 11000) throw;
+            }
+        }
+
+        // 2) Insertar la reserva (cédula ya está bloqueada y cupo asignado)
         document doc;
         doc << "idReserva" << r.getIdReserva()
             << "nombres" << r.getNombres()
@@ -220,6 +252,7 @@ bool MongoReservaRepository::crear(const Reserva& r) {
             << "numAsientos" << r.getNumAsientos();
 
         coll.insert_one(doc << finalize);
+        std::cerr << "Mongo: reserva creada (cedula " << r.getCedula() << " desbloqueada por MainFrame)" << std::endl;
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Mongo: error al crear reserva: " << e.what() << std::endl;
@@ -280,5 +313,106 @@ int MongoReservaRepository::contarAsientos(const string& cedula) {
     }
 #else
     return 0;
+#endif
+}
+bool MongoReservaRepository::validarYBloquearCedula(const string& cedula) {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto locksDb = client.database(db);
+        auto locksColl = locksDb.collection("cedula_locks");
+
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+
+        // Crear índice TTL si no existe (30 segundos de expiración)
+        try {
+            mongocxx::options::index indexOptions;
+            indexOptions.expire_after(std::chrono::seconds(30));
+            locksColl.create_index(
+                document{} << "lock_expires" << 1 << finalize,
+                indexOptions
+            );
+        } catch (...) {
+            // El índice ya existe, ignorar
+        }
+
+        // 1) Contar asientos actuales desde reservas
+        auto reservasColl = locksDb.collection(collection);
+        mongocxx::pipeline pipe;
+        pipe.match(document{} << "cedula" << cedula << finalize);
+        pipe.group(document{}
+            << "_id" << bsoncxx::types::b_null{}
+            << "total" << bsoncxx::builder::stream::open_document
+                << "$sum" << "$numAsientos"
+            << bsoncxx::builder::stream::close_document
+            << finalize);
+
+        int actuales = 0;
+        auto cursor = reservasColl.aggregate(pipe);
+        for (auto&& doc : cursor) {
+            auto itTotal = doc.find("total");
+            if (itTotal != doc.end() && itTotal->type() == bsoncxx::type::k_int32)
+                actuales = itTotal->get_int32().value;
+            else if (itTotal != doc.end() && itTotal->type() == bsoncxx::type::k_int64)
+                actuales = static_cast<int>(itTotal->get_int64().value);
+        }
+
+        // 2) Si ya tiene 5 asientos, rechazar
+        if (actuales >= 5) {
+            std::cerr << "Mongo: cedula " << cedula << " ya tiene " << actuales << " asientos (maximo 5)" << std::endl;
+            return false;
+        }
+
+        // 3) Intentar insertar lock de cédula (fail si ya existe)
+        std::time_t now = std::time(nullptr);
+        document lockDoc;
+        lockDoc << "_id" << cedula
+                << "cedula" << cedula
+                << "locked_at" << static_cast<long long>(now)
+                << "lock_expires" << bsoncxx::types::b_date(std::chrono::system_clock::now() + std::chrono::seconds(30));
+
+        try {
+            locksColl.insert_one(lockDoc << finalize);
+            std::cerr << "Mongo: cedula " << cedula << " bloqueada (lock creado)" << std::endl;
+            return true;
+        } catch (const mongocxx::exception& e) {
+            // Duplicate key error: la cédula ya está bloqueada
+            if (e.code().value() == 11000) {
+                std::cerr << "Mongo: cedula " << cedula << " ya está bloqueada por otro usuario" << std::endl;
+                return false;
+            }
+            throw;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Mongo: error validarYBloquearCedula: " << e.what() << std::endl;
+        return false;
+    }
+#else
+    return true; // Fallback en modo local
+#endif
+}
+
+bool MongoReservaRepository::desbloquearCedula(const string& cedula) {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto locksColl = client.database(db).collection("cedula_locks");
+
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+
+        auto result = locksColl.delete_one(document{} << "_id" << cedula << finalize);
+        if (result && result->deleted_count() > 0) {
+            std::cerr << "Mongo: cedula " << cedula << " desbloqueada" << std::endl;
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        std::cerr << "Mongo: error desbloquearCedula: " << e.what() << std::endl;
+        return false;
+    }
+#else
+    return true;
 #endif
 }
