@@ -6,11 +6,18 @@ ReservaEntradas/obj/
 *.pdb
 *.ilk
 *.obj
+*.zip
+
+# Portable distribution
+ReservaEntradas/Dist/
 
 # CMake build folders
 ReservaEntradas/build/
 build/
 out/
+CMakeFiles/
+CMakeCache.txt
+**/*.dir/
 
 # vcpkg
 ReservaEntradas/vcpkg_installed/
@@ -25,3 +32,16 @@ vcpkg_installed/
 
 # Configuration files with secrets
 ReservaEntradas/config.json
+
+# Logs and temp files
+logs/
+runtime.log
+mongo_error_guardar.txt
+reservas_sync_*.json
+
+# OS/Editor noise
+.DS_Store
+Thumbs.db
+
+# UML backups
+UML/*.bak_*

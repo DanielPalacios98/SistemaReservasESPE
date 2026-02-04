@@ -3,6 +3,8 @@
 #include "include/Reserva.h"
 #include <iostream>
 #include <fstream>
+#include <ctime>
+#include <cstdlib>
 
 using namespace std;
 
@@ -41,7 +43,7 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
     return false; // Forzamos fallback en Controller
 #else
     try {
-        cout << "Conectando con MongoDB..." << endl;
+        cout << "[Mongo] Conectando con MongoDB..." << endl;
         mongocxx::client client{mongocxx::uri{uri}};
         // Ping para confirmar la conexión
         using bsoncxx::builder::stream::document;
@@ -53,9 +55,11 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
         auto coll = client[db][collection];
 
         // Exportamos a JSON local con el mismo formato esperado por ListaReserva::cargarDesdeJson
-        ofstream out("reservas.json");
+        // Archivo temporal único por proceso
+        std::string tmpFile = std::string("reservas_sync_") + std::to_string(std::time(nullptr)) + "_" + std::to_string(std::rand()) + ".json";
+        ofstream out(tmpFile);
         if (!out.is_open()) {
-            cerr << "[Mongo] No se pudo abrir reservas.json para escritura." << endl;
+            cerr << "[Mongo] No se pudo abrir archivo temporal para escritura: " << tmpFile << endl;
             return false;
         }
 
@@ -94,11 +98,13 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
         }
         out << "\n  ]\n}";
         out.close();
-        cout << "[Mongo] Exportadas " << exportadas << " reservas desde '" << db << "'.'" << collection << "'" << endl;
+        cout << "[Mongo] Exportadas " << exportadas << " reservas desde " << db << "/" << collection << endl;
 
         // Cargar en memoria desde el JSON recién exportado
         lista.clear();
-        lista.cargarDesdeJson("reservas.json");
+        lista.cargarDesdeJson(tmpFile);
+        // Intentamos borrar el temporal (ignorar errores)
+        try { std::remove(tmpFile.c_str()); } catch(...) {}
         return true; // Retornamos true indicando que la conexión y sync fueron exitosas (aunque esté vacía)
     } catch (const std::exception& e) {
         cerr << "[Mongo] Error al cargar / conectar: " << e.what() << endl;
@@ -146,7 +152,123 @@ bool MongoReservaRepository::guardar(const ListaReserva& lista) {
         return true;
     } catch (const std::exception& e) {
         cerr << "[Mongo] Error al guardar: " << e.what() << endl;
+        // Log to file for debug
+        ofstream log("mongo_error_guardar.txt");
+        log << e.what() << endl;
+        log.close();
         return false;
     }
+#endif
+}
+
+// --- Implementación de nuevos métodos granulares ---
+
+int MongoReservaRepository::generarId() {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto coll = client[db]["contadores"];
+        
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+        using bsoncxx::builder::stream::open_document;
+        using bsoncxx::builder::stream::close_document;
+
+        // findOneAndUpdate para incrementar atomicamente
+        auto result = coll.find_one_and_update(
+            document{} << "_id" << "reservaId" << finalize,
+            document{} << "$inc" << open_document << "seq" << 1 << close_document << finalize,
+            mongocxx::options::find_one_and_update{}.upsert(true).return_document(mongocxx::options::return_document::k_after)
+        );
+
+        if (result) {
+            return result->view()["seq"].get_int32().value; 
+        }
+    } catch (const std::exception& e) {
+        cerr << "[Mongo] Error generarID: " << e.what() << endl;
+    }
+#endif
+    return -1; // Fallo
+}
+
+bool MongoReservaRepository::crear(const Reserva& r) {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto coll = client[db][collection];
+        
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+
+        document doc;
+        doc << "idReserva" << r.getIdReserva()
+            << "nombres" << r.getNombres()
+            << "cedula" << r.getCedula()
+            << "telefono" << r.getTelefono()
+            << "correo" << r.getCorreo()
+            << "localidad" << r.getLocalidad()
+            << "numAsientos" << r.getNumAsientos();
+
+        coll.insert_one(doc << finalize);
+        return true;
+    } catch (const std::exception& e) {
+        cerr << "[Mongo] Error al crear reserva: " << e.what() << endl;
+        return false;
+    }
+#else
+    return false;
+#endif
+}
+
+bool MongoReservaRepository::eliminar(int id) {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto coll = client[db][collection];
+        
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+
+        auto result = coll.delete_one(document{} << "idReserva" << id << finalize);
+        if (result && result->deleted_count() > 0) return true;
+        return false;
+    } catch (const std::exception& e) {
+        cerr << "[Mongo] Error al eliminar: " << e.what() << endl;
+        return false;
+    }
+#else
+    return false;
+#endif
+}
+
+int MongoReservaRepository::contarAsientos(const string& cedula) {
+#ifdef USE_MONGO
+    try {
+        mongocxx::client client{mongocxx::uri{uri}};
+        auto coll = client[db][collection];
+
+        using bsoncxx::builder::stream::document;
+        using bsoncxx::builder::stream::finalize;
+        
+        // Pipeline de agregacion para sumar asientos de esa cedula
+        mongocxx::pipeline pipe;
+        pipe.match(document{} << "cedula" << cedula << finalize);
+        pipe.group(document{} 
+            << "_id" << bsoncxx::types::b_null{}
+            << "total" << bsoncxx::builder::stream::open_document << "$sum" << "$numAsientos" << bsoncxx::builder::stream::close_document << finalize);
+
+        auto cursor = coll.aggregate(pipe);
+        for (auto&& doc : cursor) {
+            auto el = doc["total"];
+            if (el && el.type() == bsoncxx::type::k_int32) return el.get_int32().value;
+            if (el && el.type() == bsoncxx::type::k_int64) return static_cast<int>(el.get_int64().value);
+        }
+        return 0; // Si no hay docs, es 0
+    } catch (const std::exception& e) {
+        cerr << "[Mongo] Error contarAsientos: " << e.what() << endl;
+        return 0; // Fallback seguro
+    }
+#else
+    return 0;
 #endif
 }

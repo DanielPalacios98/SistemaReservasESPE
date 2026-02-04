@@ -16,4 +16,10 @@ public:
 
     bool cargar(ListaReserva& lista) override;
     bool guardar(const ListaReserva& lista) override;
+
+    // Implementación atómica
+    int generarId() override;
+    bool crear(const Reserva& r) override;
+    bool eliminar(int id) override;
+    int contarAsientos(const string& cedula) override;
 };
