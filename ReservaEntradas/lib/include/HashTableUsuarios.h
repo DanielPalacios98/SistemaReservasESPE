@@ -25,25 +25,25 @@ private:
 public:
     explicit HashTableUsuarios(size_t cap = 101)
         : buckets(nullptr), capacidad(cap) {
-        buckets = new NodoUsuario*[capacidad];
-        for (size_t i = 0; i < capacidad; ++i) buckets[i] = nullptr;
+        buckets = static_cast<NodoUsuario**>(::operator new(sizeof(NodoUsuario*) * capacidad));
+        for (size_t i = 0; i < capacidad; ++i) *(buckets + i) = nullptr;
     }
 
     ~HashTableUsuarios() {
         for (size_t i = 0; i < capacidad; ++i) {
-            NodoUsuario* curr = buckets[i];
+            NodoUsuario* curr = *(buckets + i);
             while (curr) {
                 NodoUsuario* next = curr->next;
                 delete curr;
                 curr = next;
             }
         }
-        delete[] buckets;
+        ::operator delete(buckets);
     }
 
     bool insertar(const Usuario& u) {
         size_t idx = hashCedula(u.getCedula());
-        NodoUsuario* curr = buckets[idx];
+        NodoUsuario* curr = *(buckets + idx);
         while (curr) {
             if (curr->usuario.getCedula() == u.getCedula()) {
                 return false; // cédula duplicada
@@ -51,14 +51,14 @@ public:
             curr = curr->next;
         }
         NodoUsuario* nuevo = new NodoUsuario(u);
-        nuevo->next = buckets[idx];
-        buckets[idx] = nuevo;
+        nuevo->next = *(buckets + idx);
+        *(buckets + idx) = nuevo;
         return true;
     }
 
     bool existe(const std::string& cedula) const {
         size_t idx = hashCedula(cedula);
-        NodoUsuario* curr = buckets[idx];
+        NodoUsuario* curr = *(buckets + idx);
         while (curr) {
             if (curr->usuario.getCedula() == cedula) return true;
             curr = curr->next;
@@ -68,7 +68,7 @@ public:
 
     const Usuario* obtener(const std::string& cedula) const {
         size_t idx = hashCedula(cedula);
-        NodoUsuario* curr = buckets[idx];
+        NodoUsuario* curr = *(buckets + idx);
         while (curr) {
             if (curr->usuario.getCedula() == cedula) return &curr->usuario;
             curr = curr->next;

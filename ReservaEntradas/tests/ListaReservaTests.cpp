@@ -19,7 +19,8 @@ int main(){
     assertEq(r==nullptr ? 0:1, 0, "No debe permitir superar 5 asientos por usuario");
 
     // Validar cupo por localidad (usa constantes MAX_*). Intentar llenar general
-    for(int i=0;i<30;i++) l.agregarReserva("A B", "1720000000", "0991111111", "a@b.com", "general", 1);
+    // Usamos diferentes cédulas para no topar la regla de 5 asientos por usuario.
+    for(int i=0;i<30;i++) l.agregarReserva("A B", std::to_string(1720000000 + i), "0991111111", "a@b.com", "general", 1);
     auto r2 = l.agregarReserva("C D", "1730000000", "0992222222", "c@d.com", "general", 1);
     assertEq(r2==nullptr ? 0:1, 0, "No debe permitir exceder cupo de general");
 

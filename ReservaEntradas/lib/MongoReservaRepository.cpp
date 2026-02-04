@@ -39,31 +39,32 @@ static string jsonEscapeLocal(const string& s) {
 
 bool MongoReservaRepository::cargar(ListaReserva& lista) {
 #ifndef USE_MONGO
-    std::cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
+    std::cout << "Aviso: Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
     return false; // Forzamos fallback en Controller
 #else
     try {
-        std::cout << "[Mongo] Conectando con MongoDB..." << std::endl;
+        std::cout << "Mongo: conectando con MongoDB..." << std::endl;
         mongocxx::client client{mongocxx::uri{uri}};
         // Ping para confirmar la conexión
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
-        auto pingResult = client[db].run_command(document{} << "ping" << 1 << finalize);
+        auto dbh = client.database(db);
+        auto pingResult = dbh.run_command(document{} << "ping" << 1 << finalize);
         (void)pingResult; // No usamos el resultado, sólo confirmación
-        std::cout << "[Mongo] Conexión exitosa al cluster y base '" << db << "'." << std::endl;
+        std::cout << "Mongo: conexion exitosa al cluster y base '" << db << "'." << std::endl;
 
-        auto coll = client[db][collection];
+        auto coll = dbh.collection(collection);
 
         // Exportamos a JSON local con el mismo formato esperado por ListaReserva::cargarDesdeJson
         // Archivo temporal único por proceso
         std::string tmpFile = std::string("reservas_sync_") + std::to_string(std::time(nullptr)) + "_" + std::to_string(std::rand()) + ".json";
         ofstream out(tmpFile);
         if (!out.is_open()) {
-            cerr << "[Mongo] No se pudo abrir archivo temporal para escritura: " << tmpFile << endl;
+            cerr << "Mongo: no se pudo abrir archivo temporal para escritura: " << tmpFile << endl;
             return false;
         }
 
-        out << "{\n  \"reservas\": [\n";
+        out << "{\n  \"reservas\": " << static_cast<char>(91) << "\n";
         bool first = true;
         size_t exportadas = 0;
         for (auto&& doc : coll.find({})) {
@@ -74,14 +75,21 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
             int numAs = 1;
             std::string nombres, cedula, telefono, correo, localidad;
 
-            auto elId = v["idReserva"]; if (elId && elId.type() == bsoncxx::type::k_int32) id = elId.get_int32().value;
-            auto elNA = v["numAsientos"]; if (elNA && elNA.type() == bsoncxx::type::k_int32) numAs = elNA.get_int32().value;
+            auto itId = v.find("idReserva");
+            if (itId != v.end() && itId->type() == bsoncxx::type::k_int32) id = itId->get_int32().value;
+            auto itNA = v.find("numAsientos");
+            if (itNA != v.end() && itNA->type() == bsoncxx::type::k_int32) numAs = itNA->get_int32().value;
 
-            auto elNom = v["nombres"];   if (elNom && elNom.type() == bsoncxx::type::k_string) nombres   = std::string(elNom.get_string().value);
-            auto elCed = v["cedula"];    if (elCed && elCed.type() == bsoncxx::type::k_string) cedula    = std::string(elCed.get_string().value);
-            auto elTel = v["telefono"];  if (elTel && elTel.type() == bsoncxx::type::k_string) telefono  = std::string(elTel.get_string().value);
-            auto elCor = v["correo"];    if (elCor && elCor.type() == bsoncxx::type::k_string) correo    = std::string(elCor.get_string().value);
-            auto elLoc = v["localidad"]; if (elLoc && elLoc.type() == bsoncxx::type::k_string) localidad = std::string(elLoc.get_string().value);
+            auto itNom = v.find("nombres");
+            if (itNom != v.end() && itNom->type() == bsoncxx::type::k_string) nombres = std::string(itNom->get_string().value);
+            auto itCed = v.find("cedula");
+            if (itCed != v.end() && itCed->type() == bsoncxx::type::k_string) cedula = std::string(itCed->get_string().value);
+            auto itTel = v.find("telefono");
+            if (itTel != v.end() && itTel->type() == bsoncxx::type::k_string) telefono = std::string(itTel->get_string().value);
+            auto itCor = v.find("correo");
+            if (itCor != v.end() && itCor->type() == bsoncxx::type::k_string) correo = std::string(itCor->get_string().value);
+            auto itLoc = v.find("localidad");
+            if (itLoc != v.end() && itLoc->type() == bsoncxx::type::k_string) localidad = std::string(itLoc->get_string().value);
 
             if (!first) out << ",\n";
             first = false;
@@ -96,9 +104,9 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
             out << "    }";
             ++exportadas;
         }
-        out << "\n  ]\n}";
+        out << "\n  " << static_cast<char>(93) << "\n}";
         out.close();
-        std::cout << "[Mongo] Exportadas " << exportadas << " reservas desde " << db << "/" << collection << std::endl;
+        std::cout << "Mongo: exportadas " << exportadas << " reservas desde " << db << "/" << collection << std::endl;
 
         // Cargar en memoria desde el JSON recién exportado
         lista.clear();
@@ -107,7 +115,7 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
         try { std::remove(tmpFile.c_str()); } catch(...) {}
         return true; // Retornamos true indicando que la conexión y sync fueron exitosas (aunque esté vacía)
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error al cargar / conectar: " << e.what() << std::endl;
+        std::cerr << "Mongo: error al cargar o conectar: " << e.what() << std::endl;
         return false;
     }
 #endif
@@ -115,12 +123,12 @@ bool MongoReservaRepository::cargar(ListaReserva& lista) {
 
 bool MongoReservaRepository::guardar(const ListaReserva& lista) {
 #ifndef USE_MONGO
-    std::cout << "[Aviso] Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
+    std::cout << "Aviso: Backend Mongo no habilitado en esta build. Usar JSON como fallback." << std::endl;
     return false; // Forzamos fallback en Controller
 #else
     try {
         mongocxx::client client{mongocxx::uri{uri}};
-        auto coll = client[db][collection];
+        auto coll = client.database(db).collection(collection);
 
         // Estrategia simple: reemplazar coleccion completa
         coll.delete_many({});
@@ -148,10 +156,10 @@ bool MongoReservaRepository::guardar(const ListaReserva& lista) {
             ++insertadas;
             tmp = tmp->next;
         } while (tmp != head);
-        std::cout << "[Mongo] Insertadas " << insertadas << " reservas en '" << db << "'.'" << collection << "'" << std::endl;
+        std::cout << "Mongo: insertadas " << insertadas << " reservas en '" << db << "'.'" << collection << "'" << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error al guardar: " << e.what() << std::endl;
+        std::cerr << "Mongo: error al guardar: " << e.what() << std::endl;
         // Log to file for debug
         ofstream log("mongo_error_guardar.txt");
         log << e.what() << endl;
@@ -167,7 +175,7 @@ int MongoReservaRepository::generarId() {
 #ifdef USE_MONGO
     try {
         mongocxx::client client{mongocxx::uri{uri}};
-        auto coll = client[db]["contadores"];
+        auto coll = client.database(db).collection("contadores");
         
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
@@ -182,10 +190,12 @@ int MongoReservaRepository::generarId() {
         );
 
         if (result) {
-            return result->view()["seq"].get_int32().value; 
+            auto view = result->view();
+            auto itSeq = view.find("seq");
+            if (itSeq != view.end() && itSeq->type() == bsoncxx::type::k_int32) return itSeq->get_int32().value;
         }
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error generarID: " << e.what() << std::endl;
+        std::cerr << "Mongo: error generarId: " << e.what() << std::endl;
     }
 #endif
     return -1; // Fallo
@@ -195,7 +205,7 @@ bool MongoReservaRepository::crear(const Reserva& r) {
 #ifdef USE_MONGO
     try {
         mongocxx::client client{mongocxx::uri{uri}};
-        auto coll = client[db][collection];
+        auto coll = client.database(db).collection(collection);
         
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
@@ -212,7 +222,7 @@ bool MongoReservaRepository::crear(const Reserva& r) {
         coll.insert_one(doc << finalize);
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error al crear reserva: " << e.what() << std::endl;
+        std::cerr << "Mongo: error al crear reserva: " << e.what() << std::endl;
         return false;
     }
 #else
@@ -224,7 +234,7 @@ bool MongoReservaRepository::eliminar(int id) {
 #ifdef USE_MONGO
     try {
         mongocxx::client client{mongocxx::uri{uri}};
-        auto coll = client[db][collection];
+        auto coll = client.database(db).collection(collection);
         
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
@@ -233,7 +243,7 @@ bool MongoReservaRepository::eliminar(int id) {
         if (result && result->deleted_count() > 0) return true;
         return false;
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error al eliminar: " << e.what() << std::endl;
+        std::cerr << "Mongo: error al eliminar: " << e.what() << std::endl;
         return false;
     }
 #else
@@ -245,7 +255,7 @@ int MongoReservaRepository::contarAsientos(const string& cedula) {
 #ifdef USE_MONGO
     try {
         mongocxx::client client{mongocxx::uri{uri}};
-        auto coll = client[db][collection];
+        auto coll = client.database(db).collection(collection);
 
         using bsoncxx::builder::stream::document;
         using bsoncxx::builder::stream::finalize;
@@ -259,13 +269,13 @@ int MongoReservaRepository::contarAsientos(const string& cedula) {
 
         auto cursor = coll.aggregate(pipe);
         for (auto&& doc : cursor) {
-            auto el = doc["total"];
-            if (el && el.type() == bsoncxx::type::k_int32) return el.get_int32().value;
-            if (el && el.type() == bsoncxx::type::k_int64) return static_cast<int>(el.get_int64().value);
+            auto itTotal = doc.find("total");
+            if (itTotal != doc.end() && itTotal->type() == bsoncxx::type::k_int32) return itTotal->get_int32().value;
+            if (itTotal != doc.end() && itTotal->type() == bsoncxx::type::k_int64) return static_cast<int>(itTotal->get_int64().value);
         }
         return 0; // Si no hay docs, es 0
     } catch (const std::exception& e) {
-        std::cerr << "[Mongo] Error contarAsientos: " << e.what() << std::endl;
+        std::cerr << "Mongo: error contarAsientos: " << e.what() << std::endl;
         return 0; // Fallback seguro
     }
 #else

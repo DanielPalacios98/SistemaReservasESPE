@@ -7,25 +7,43 @@
 #include <algorithm>
 #include <cctype>
 #include <exception>
-#include <regex>
 using namespace std;
+
+static Reserva* getArrElem(Reserva** base, int index) {
+    return *(base + index);
+}
+
+static void setArrElem(Reserva** base, int index, Reserva* value) {
+    *(base + index) = value;
+}
+
+static void trimInPlace(string& s) {
+    while (!s.empty() && isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+    while (!s.empty() && isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+}
+
+static bool isDigitChar(char c) {
+    return isdigit(static_cast<unsigned char>(c)) != 0;
+}
 
 // QuickSort auxiliar sobre arreglo dinámico de Reserva*
 static int particionArr(Reserva** arr, int low, int high, bool porNombre) {
-    string piv = porNombre ? arr[high]->getNombres() : arr[high]->getCedula();
+    Reserva* pivR = getArrElem(arr, high);
+    string piv = porNombre ? pivR->getNombres() : pivR->getCedula();
     int i = low - 1;
     for (int j = low; j < high; ++j) {
-        string actual = porNombre ? arr[j]->getNombres() : arr[j]->getCedula();
+        Reserva* actR = getArrElem(arr, j);
+        string actual = porNombre ? actR->getNombres() : actR->getCedula();
         if (actual < piv) {
             ++i;
-            Reserva* tmp = arr[i];
-            arr[i] = arr[j];
-            arr[j] = tmp;
+            Reserva* tmp = getArrElem(arr, i);
+            setArrElem(arr, i, actR);
+            setArrElem(arr, j, tmp);
         }
     }
-    Reserva* tmp = arr[i + 1];
-    arr[i + 1] = arr[high];
-    arr[high] = tmp;
+    Reserva* tmp = getArrElem(arr, i + 1);
+    setArrElem(arr, i + 1, pivR);
+    setArrElem(arr, high, tmp);
     return i + 1;
 }
 
@@ -86,10 +104,10 @@ Reserva* ListaReserva::agregarReserva(const string& nombres, const string& cedul
         return nullptr;
     }
 
-    // Regla del cliente: máximo 5 reservas por cédula (no por asientos)
-    int reservasUsuario = contarReservasPorCedula(cedula);
-    if (reservasUsuario >= 5) {
-        cout << "Este usuario ya ha alcanzado el maximo de 5 reservas." << endl;
+    // Regla del cliente: máximo 5 asientos por cédula (suma de asientos)
+    int asientosUsuario = contarAsientosPorCedula(cedula);
+    if (asientosUsuario + asientos > 5) {
+        cout << "Este usuario ya ha alcanzado el maximo de 5 asientos." << endl;
         return nullptr;
     }
 
@@ -220,14 +238,15 @@ void ListaReserva::mostrarReservasOrdenadas(bool porNombre) {
     NodoReserva* temp = head;
     do { ++n; temp = temp->next; } while (temp != head);
     // Copiar a arreglo dinámico
-    Reserva** arr = new Reserva*[n];
+    void* mem = ::operator new(sizeof(Reserva*) * static_cast<size_t>(n));
+    Reserva** arr = static_cast<Reserva**>(mem);
     temp = head;
-    for (int i = 0; i < n; ++i) { arr[i] = temp->reserva; temp = temp->next; }
+    for (int i = 0; i < n; ++i) { *(arr + i) = temp->reserva; temp = temp->next; }
     // Ordenar
     quickSortArr(arr, 0, n - 1, porNombre);
     cout << "=== Reservas ordenadas por " << (porNombre ? "nombre" : "cedula") << " ===" << endl;
-    for (int i = 0; i < n; ++i) arr[i]->mostrarDetalle();
-    delete[] arr;
+    for (int i = 0; i < n; ++i) getArrElem(arr, i)->mostrarDetalle();
+    ::operator delete(mem);
 }
 
 void ListaReserva::guardarEnArchivo(const string& filename) {
@@ -266,19 +285,21 @@ void ListaReserva::cargarDesdeArchivo(const string& filename) {
         getline(ss, loc, ',');
         getline(ss, numAs, '\n');
 
-        auto trim = [](string& s) {
-            while (!s.empty() && isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
-            while (!s.empty() && isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
-        };
-        trim(id); trim(nombre); trim(ced); trim(tel); trim(mail); trim(loc); trim(numAs);
+        trimInPlace(id);
+        trimInPlace(nombre);
+        trimInPlace(ced);
+        trimInPlace(tel);
+        trimInPlace(mail);
+        trimInPlace(loc);
+        trimInPlace(numAs);
 
         if (id.empty() || numAs.empty() || nombre.empty() || ced.empty()) {
             cout << "Aviso: linea de archivo ignorada por formato invalido: '" << line << "'\n";
             continue;
         }
 
-        bool idDigits = all_of(id.begin(), id.end(), [](char c){ return isdigit(static_cast<unsigned char>(c)); });
-        bool numAsDigits = all_of(numAs.begin(), numAs.end(), [](char c){ return isdigit(static_cast<unsigned char>(c)); });
+        bool idDigits = all_of(id.begin(), id.end(), isDigitChar);
+        bool numAsDigits = all_of(numAs.begin(), numAs.end(), isDigitChar);
         if (!idDigits || !numAsDigits) {
             cout << "Aviso: linea de archivo ignorada (id o numAs no numerico): '" << line << "'\n";
             continue;
@@ -359,10 +380,12 @@ static string jsonEscape(const string& s) {
 static string jsonUnescape(const string& s) {
     string out;
     out.reserve(s.size());
-    for (size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (c == '\\' && i + 1 < s.size()) {
-            char n = s[i + 1];
+    const char* data = s.c_str();
+    const size_t len = s.size();
+    for (size_t i = 0; i < len; ++i) {
+        char c = *(data + i);
+        if (c == '\\' && i + 1 < len) {
+            char n = *(data + i + 1);
             switch (n) {
                 case 'n': out += '\n'; ++i; break;
                 case 'r': out += '\r'; ++i; break;
@@ -381,7 +404,7 @@ static string jsonUnescape(const string& s) {
 void ListaReserva::guardarEnJson(const string& filename) const {
     ofstream out(filename);
     if (!out.is_open()) return;
-    out << "{\n  \"reservas\": [\n";
+    out << "{\n  \"reservas\": " << static_cast<char>(91) << "\n";
     if (head) {
         // Recorrer y escribir objetos
         NodoReserva* temp = head;
@@ -403,8 +426,76 @@ void ListaReserva::guardarEnJson(const string& filename) const {
         } while (temp != head);
         out << "\n";
     }
-    out << "  ]\n}";
+    out << "  " << static_cast<char>(93) << "\n}";
     out.close();
+}
+
+static bool isJsonSpace(char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+static bool findKeyInRange(const string& content, size_t rangeStart, size_t rangeEnd, const string& key, size_t& outPos) {
+    const string needle = string("\"") + key + "\"";
+    size_t pos = content.find(needle, rangeStart);
+    if (pos == string::npos) return false;
+    if (pos >= rangeEnd) return false;
+    outPos = pos;
+    return true;
+}
+
+static bool parseJsonStringField(const string& content, size_t rangeStart, size_t rangeEnd, const string& key, string& outValue) {
+    size_t keyPos = 0;
+    if (!findKeyInRange(content, rangeStart, rangeEnd, key, keyPos)) return false;
+    const string needle = string("\"") + key + "\"";
+    size_t pos = content.find(':', keyPos + needle.size());
+    if (pos == string::npos || pos >= rangeEnd) return false;
+    ++pos;
+    while (pos < rangeEnd && isJsonSpace(content.at(pos))) ++pos;
+    if (pos >= rangeEnd || content.at(pos) != '"') return false;
+    ++pos;
+
+    string raw;
+    while (pos < rangeEnd) {
+        const char c = content.at(pos);
+        if (c == '\\') {
+            if (pos + 1 < rangeEnd) {
+                raw.push_back('\\');
+                raw.push_back(content.at(pos + 1));
+                pos += 2;
+                continue;
+            }
+            return false;
+        }
+        if (c == '"') break;
+        raw.push_back(c);
+        ++pos;
+    }
+    outValue = jsonUnescape(raw);
+    return true;
+}
+
+static bool parseJsonIntField(const string& content, size_t rangeStart, size_t rangeEnd, const string& key, int& outValue) {
+    size_t keyPos = 0;
+    if (!findKeyInRange(content, rangeStart, rangeEnd, key, keyPos)) return false;
+    const string needle = string("\"") + key + "\"";
+    size_t pos = content.find(':', keyPos + needle.size());
+    if (pos == string::npos || pos >= rangeEnd) return false;
+    ++pos;
+    while (pos < rangeEnd && isJsonSpace(content.at(pos))) ++pos;
+    if (pos >= rangeEnd) return false;
+
+    bool any = false;
+    int value = 0;
+    while (pos < rangeEnd) {
+        const char c = content.at(pos);
+        if (!isDigitChar(c)) break;
+        any = true;
+        value = (value * 10) + (static_cast<int>(c) - static_cast<int>('0'));
+        ++pos;
+    }
+    if (!any) return false;
+    outValue = value;
+    return true;
 }
 
 bool ListaReserva::cargarDesdeJson(const string& filename) {
@@ -421,29 +512,35 @@ bool ListaReserva::cargarDesdeJson(const string& filename) {
     // Limpiar lista actual
     clear();
 
-    // Buscar objetos dentro del JSON con regex básica
-    // Patrón estricto para el formato que generamos en guardarEnJson
-    regex objRe(
-        "\\{\\s*\\\"idReserva\\\"\\s*:\\s*(\\d+)\\s*,\\s*"
-        "\\\"nombres\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
-        "\\\"cedula\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
-        "\\\"telefono\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
-        "\\\"correo\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
-        "\\\"localidad\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,\\s*"
-        "\\\"numAsientos\\\"\\s*:\\s*(\\d+)\\s*\\}"
-    );
+    size_t pos = 0;
+    while (true) {
+        const size_t objStart = content.find('{', pos);
+        if (objStart == string::npos) break;
+        const size_t objEnd = content.find('}', objStart + 1);
+        if (objEnd == string::npos) break;
 
-    auto it = sregex_iterator(content.begin(), content.end(), objRe);
-    auto end = sregex_iterator();
-    for (; it != end; ++it) {
-        smatch m = *it;
-        int id = stoi(m[1].str());
-        string nombres = jsonUnescape(m[2].str());
-        string cedula = jsonUnescape(m[3].str());
-        string telefono = jsonUnescape(m[4].str());
-        string correo = jsonUnescape(m[5].str());
-        string localidad = jsonUnescape(m[6].str());
-        int numAs = stoi(m[7].str());
+        pos = objEnd + 1;
+        const size_t rangeStart = objStart;
+        const size_t rangeEnd = objEnd + 1;
+
+        size_t dummy = 0;
+        if (!findKeyInRange(content, rangeStart, rangeEnd, "idReserva", dummy)) continue;
+
+        int id = 0;
+        int numAs = 0;
+        string nombres;
+        string cedula;
+        string telefono;
+        string correo;
+        string localidad;
+
+        if (!parseJsonIntField(content, rangeStart, rangeEnd, "idReserva", id)) continue;
+        if (!parseJsonStringField(content, rangeStart, rangeEnd, "nombres", nombres)) continue;
+        if (!parseJsonStringField(content, rangeStart, rangeEnd, "cedula", cedula)) continue;
+        if (!parseJsonStringField(content, rangeStart, rangeEnd, "telefono", telefono)) continue;
+        if (!parseJsonStringField(content, rangeStart, rangeEnd, "correo", correo)) continue;
+        if (!parseJsonStringField(content, rangeStart, rangeEnd, "localidad", localidad)) continue;
+        if (!parseJsonIntField(content, rangeStart, rangeEnd, "numAsientos", numAs)) continue;
 
         // Validaciones básicas consientes con TXT
         if (!Reserva::validarCedula(cedula) || !Reserva::validarNombres(nombres) ||

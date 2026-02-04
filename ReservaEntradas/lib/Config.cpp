@@ -1,27 +1,75 @@
 #include "include/Config.h"
 #include <fstream>
-#include <sstream>
-#include <regex>
 #include <iostream>
 using namespace std;
 
+static bool isJsonSpace(char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
 static string extractJsonString(const string& content, const string& key) {
-    // Busca "key" : "value" ignorando espacios
-    regex re("\\\"" + key + "\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"");
-    smatch m;
-    if (regex_search(content, m, re)) return m[1].str();
-    return "";
+    // Parser JSON mínimo: busca "key": "value" y devuelve el string sin comillas.
+    const string needle = string("\"") + key + "\"";
+    size_t pos = content.find(needle);
+    if (pos == string::npos) return "";
+
+    pos = content.find(':', pos + needle.size());
+    if (pos == string::npos) return "";
+    ++pos;
+    while (pos < content.size() && isJsonSpace(content.at(pos))) ++pos;
+    if (pos >= content.size() || content.at(pos) != '"') return "";
+    ++pos;
+
+    string out;
+    while (pos < content.size()) {
+        const char c = content.at(pos);
+        if (c == '\\') {
+            if (pos + 1 < content.size()) {
+                out.push_back(content.at(pos + 1));
+                pos += 2;
+                continue;
+            }
+            break;
+        }
+        if (c == '"') break;
+        out.push_back(c);
+        ++pos;
+    }
+    return out;
 }
 
 Config Config::load(const string& path) {
     Config cfg;
     // Intentar varias ubicaciones relativas (útil al ejecutar desde build/Release)
-    vector<string> candidates = { path, string("../") + path, string("../../") + path };
+
+    class CandidateNode {
+    public:
+        string value;
+        CandidateNode* next;
+
+        CandidateNode(const string& v, CandidateNode* n) : value(v), next(n) {}
+    };
+
+    CandidateNode* candidates = new CandidateNode(
+        path,
+        new CandidateNode(
+            string("../") + path,
+            new CandidateNode(string("../../") + path, nullptr)
+        )
+    );
+
     ifstream in;
-    for (const auto& p : candidates) {
-        in.open(p);
+    for (CandidateNode* cur = candidates; cur != nullptr; cur = cur->next) {
+        in.open(cur->value);
         if (in.is_open()) break;
     }
+
+    while (candidates != nullptr) {
+        CandidateNode* next = candidates->next;
+        delete candidates;
+        candidates = next;
+    }
+
     if (!in.is_open()) return cfg; // defaults
     string content;
     in.seekg(0, ios::end);

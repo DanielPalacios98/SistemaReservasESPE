@@ -18,5 +18,5 @@ static void write(const char* level, const std::string& msg) {
     out.close();
 }
 
-void Log::info(const std::string& msg) { write("[INFO]", msg); }
-void Log::error(const std::string& msg) { write("[ERROR]", msg); }
+void Log::info(const std::string& msg) { write("INFO", msg); }
+void Log::error(const std::string& msg) { write("ERROR", msg); }
