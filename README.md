@@ -1,80 +1,36 @@
-# Sistema de Reservas ESPE (Rama Mongo + CMake)
+# Sistema de Reservas ESPE (Mongo + CMake)
 
-Esta rama (eature/mongo-cmake) introduce un sistema de construcci�n moderno basado en **CMake** y gesti�n de dependencias con **vcpkg**, adem�s de integraci�n completa con **MongoDB Atlas**.
+Esta rama usa CMake + vcpkg y una GUI con wxWidgets. Soporta dos backends:
+- MongoDB Atlas (modo nube) si compilas con USE_MONGO=ON y configuras config.json
+- JSON local (reservas.json) como modo offline / fallback
 
-## Requisitos Previos
+## Que hace actualmente
 
-Para compilar y ejecutar esta versi�n, necesitas:
+- GUI para crear, listar, recargar y eliminar reservas
+- Validaciones basicas (nombres, cedula, telefono, correo, localidad, asientos)
+- Regla de negocio: maximo 5 asientos por cedula (total acumulado)
+- Si Mongo falla al iniciar, la app avisa y carga datos locales (reservas.json)
+- Script para generar un "Dist" portable (exe + dlls + config/recursos)
 
-1.  **Visual Studio Build Tools 2022** (o Visual Studio Community):
-    *   Componente "Desarrollo para el escritorio con C++".
-    *   **Importante:** Aseg�rate de instalar el **Windows SDK 10** o 11.
-2.  **CMake** (versi�n 3.21 o superior).
-3.  **vcpkg**: Gestor de paquetes de C++ de Microsoft.
+## Requisitos para compilar en otra PC (Windows)
 
-## Configuraci�n del Entorno (vcpkg)
+- Windows 10/11 x64
+- Visual Studio 2022 (Build Tools o Community) con:
+  - Desktop development with C++
+  - Windows SDK 10 u 11
+- CMake 3.21+
+- Git
+- vcpkg (recomendado en C:\vcpkg)
 
-Si a�n no tienes vcpkg instalado:
+Notas:
+- El proyecto CMake esta en la carpeta ReservaEntradas/.
+- config.json esta ignorado por git (por credenciales).
 
-\\\powershell
-git clone https://github.com/microsoft/vcpkg.git c:\vcpkg
-cd c:\vcpkg
-.\bootstrap-vcpkg.bat
-# Agrega c:\vcpkg al PATH de tu sistema (opcional pero recomendado)
-\\\
+## Instalar vcpkg (una sola vez)
 
-## Compilaci�n
+PowerShell:
 
-El proyecto utiliza un manifiesto (\cpkg.json\) para descargar e instalar autom�ticamente las dependencias (\mongo-cxx-driver\, \
-lohmann-json\, \wxwidgets\, etc.).
-
-1.  Abre una terminal en la carpeta \ReservaEntradas\:
-    \\\powershell
-    cd ReservaEntradas
-    \\\
-
-2.  **Configura el proyecto** (esto descargar� y compilar� las dependencias, puede tardar varios minutos la primera vez):
-    \\\powershell
-    cmake -S . -B build -DUSE_MONGO=ON -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
-    # Ajusta la ruta a vcpkg.cmake seg�n donde hayas instalado vcpkg
-    \\\
-
-3.  **Compila**:
-    \\\powershell
-    cmake --build build --config Release
-    \\\
-
-## Configuraci�n de MongoDB
-
-Para conectar a tu cluster de Atlas:
-
-1.  Renombra el archivo \config.example.json\ a \config.json\.
-2.  Ed�talo con tu string de conexi�n:
-    \\\json
-    {
-      "backend": "mongo",
-      "mongoUri": "mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority",
-      "mongoDb": "Proyecto",
-      "mongoCollection": "ReservaEntradas"
-    }
-    \\\
-    *Nota: \config.json\ est� ignorado por git para proteger tus credenciales.*
-
-## Ejecuci�n
-
-\\\powershell
-cd build/Release
-.\ReservaEntradas.exe
-\\\
-
-## Estructura del Proyecto
-
-*   \src/\, \include/\: C�digo fuente refactorizado.
-*   \lib/\: Implementaciones de repositorios (Mongo, JSON) y modelos.
-*   \cpkg.json\: Manifiesto de dependencias.
-*   \CMakeLists.txt\: Configuraci�n de construcci�n.
-
-## Notas
-
-*   Si la conexi�n a Mongo falla, el sistema intentar� guardar en JSON local como fallback.
-*   El binario generado es dependiente de las DLLs en su misma carpeta (copiadas autom�ticamente tras el build).
+```powershell
+git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+C:\vcpkg\bootstrap-vcpkg.bat
+created by DP y SD
