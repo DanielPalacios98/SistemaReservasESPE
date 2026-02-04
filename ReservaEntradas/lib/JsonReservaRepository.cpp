@@ -3,8 +3,9 @@
 
 bool JsonReservaRepository::cargar(ListaReserva& lista) {
     if (!lista.cargarDesdeJson(jsonFile)) {
-        // fallback a TXT por compatibilidad
-        lista.recargarDesdeArchivo(txtFile);
+        // Si falla JSON, iniciamos vacio (o se podria intentar otra logica)
+        // Ya no usamos TXT fallback.
+        return false;
     }
     return true;
 }
@@ -13,8 +14,8 @@ bool JsonReservaRepository::guardar(const ListaReserva& lista) {
     // Necesitamos métodos no const; hacemos una copia superficial del puntero a lista para reutilizar API
     ListaReserva& ref = const_cast<ListaReserva&>(lista);
     ref.guardarEnJson(jsonFile);
-    ref.guardarEnJsonLines(jsonlFile);
-    ref.guardarEnArchivo(txtFile);
+    // ref.guardarEnJsonLines(jsonlFile); // Deshabilitado legacy
+    // ref.guardarEnArchivo(txtFile);     // Deshabilitado legacy
     return true;
 }
 

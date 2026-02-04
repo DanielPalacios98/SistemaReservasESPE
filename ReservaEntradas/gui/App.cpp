@@ -37,7 +37,7 @@ bool MyApp::OnInit() {
             log << "Mongo cargar: FAIL\n";
             log << "Error: " << err.ToStdString() << "\n";
             Log::error(std::string("Mongo cargar FAIL: ") + err.ToStdString());
-            wxMessageBox("Fallo conexion a MongoDB.\n\n" + err + "\n\nEl sistema cargara los datos LOCALES (reservas.txt).", "Modo Offline Activo", wxICON_WARNING);
+            wxMessageBox("Fallo conexion a MongoDB.\n\n" + err + "\n\nEl sistema cargara los datos LOCALES (reservas.json).", "Modo Offline Activo", wxICON_WARNING);
             
             delete repo;
             repo = new JsonReservaRepository();
